@@ -24,16 +24,12 @@ const NUM_COLS = ['total_exp_yrs', 'training_hours', 'satisfaction_score', 'tota
 
 function validate(rows: Record<string, any>[], colNames: string[]): ValidationResult {
   const missingColumns = REQUIRED_COLUMNS.filter(c => !colNames.includes(c));
-  
-  // Duplicate IDs
   let duplicateIds = 0;
   const idCol = colNames.find(c => c.includes('employee_id') || c.includes('emp_id') || c === 'id');
   if (idCol) {
     const ids = rows.map(r => r[idCol]).filter(Boolean);
     duplicateIds = ids.length - new Set(ids).size;
   }
-
-  // Invalid dates
   const invalidDates: Record<string, number> = {};
   for (const col of DATE_COLS) {
     if (!colNames.includes(col)) continue;
@@ -44,8 +40,6 @@ function validate(rows: Record<string, any>[], colNames: string[]): ValidationRe
     }
     if (count > 0) invalidDates[col] = count;
   }
-
-  // Invalid numbers
   const invalidNumbers: Record<string, number> = {};
   for (const col of NUM_COLS) {
     if (!colNames.includes(col)) continue;
@@ -56,8 +50,6 @@ function validate(rows: Record<string, any>[], colNames: string[]): ValidationRe
     }
     if (count > 0) invalidNumbers[col] = count;
   }
-
-  // Null rates for critical fields
   const nullRates: Record<string, number> = {};
   for (const col of REQUIRED_COLUMNS) {
     if (!colNames.includes(col)) continue;
@@ -68,12 +60,20 @@ function validate(rows: Record<string, any>[], colNames: string[]): ValidationRe
     const rate = Math.round((nullCount / rows.length) * 100);
     if (rate > 0) nullRates[col] = rate;
   }
-
   return { missingColumns, duplicateIds, invalidDates, invalidNumbers, nullRates };
 }
 
+// Helper to find first matching column from variations
+function findCol(row: Record<string, any>, ...names: string[]): any {
+  for (const n of names) {
+    if (row[n] !== undefined) return row[n];
+  }
+  return null;
+}
+
 function rowToEmployee(row: Record<string, any>): Employee {
-  return {
+  // Map known fields
+  const mapped: Employee = {
     date_of_joining: parseDate(row.date_of_joining),
     date_of_exit: parseDate(row.date_of_exit),
     date_of_birth: parseDate(row.date_of_birth),
@@ -82,7 +82,7 @@ function rowToEmployee(row: Record<string, any>): Employee {
     satisfaction_score: parseNum(row.satisfaction_score),
     total_ctc_pa: parseNum(row.total_ctc_pa),
     gender: safeStr(row.gender),
-    hiring_source: safeStr(row.hiring_source) || safeStr(row.hiring_source_category),
+    hiring_source: safeStr(findCol(row, 'hiring_source', 'hiring_source_category')),
     zone: safeStr(row.zone),
     highest_qualification: safeStr(row.highest_qualification),
     employment_sector: safeStr(row.employment_sector),
@@ -95,9 +95,28 @@ function rowToEmployee(row: Record<string, any>): Employee {
     skills_2: safeStr(row.skills_2),
     skills_3: safeStr(row.skills_3),
     competency: safeStr(row.competency),
-    employee_name: safeStr(row.employee_name) || safeStr(row.emp_name) || safeStr(row.name),
-    employee_id: safeStr(row.employee_id) || safeStr(row.emp_id) || safeStr(row.id),
+    employee_name: safeStr(findCol(row, 'employee_name', 'emp_name', 'name')),
+    employee_id: safeStr(findCol(row, 'employee_id', 'emp_id', 'id')),
+    // New filter fields with flexible column matching
+    company: safeStr(findCol(row, 'company', 'company_name', 'org', 'organization')),
+    employment_type: safeStr(findCol(row, 'employment_type', 'emp_type', 'type_of_employment')),
+    employment_status: safeStr(findCol(row, 'employment_status', 'emp_status', 'status')),
+    business_unit: safeStr(findCol(row, 'business_unit', 'bu', 'unit', 'employment_sector')),
+    area: safeStr(findCol(row, 'area', 'region', 'sub_zone')),
+    function_name: safeStr(findCol(row, 'function', 'function_name', 'func')),
+    department: safeStr(findCol(row, 'department', 'dept', 'department_name')),
+    band: safeStr(findCol(row, 'band', 'grade', 'level', 'job_band')),
   };
+
+  // Capture extra fields not already mapped
+  const knownKeys = new Set(Object.keys(mapped));
+  for (const [key, value] of Object.entries(row)) {
+    if (!knownKeys.has(key)) {
+      mapped[key] = value;
+    }
+  }
+
+  return mapped;
 }
 
 export function parseExcelFile(file: File, preferredSheet?: string): Promise<{ employees: Employee[]; upload: UploadResult }> {
@@ -108,7 +127,6 @@ export function parseExcelFile(file: File, preferredSheet?: string): Promise<{ e
         const data = new Uint8Array(e.target!.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const sheetNames = workbook.SheetNames;
-
         let sheetName = 'Master';
         if (preferredSheet && sheetNames.includes(preferredSheet)) {
           sheetName = preferredSheet;
@@ -117,11 +135,8 @@ export function parseExcelFile(file: File, preferredSheet?: string): Promise<{ e
         } else {
           sheetName = sheetNames[0];
         }
-
         const ws = workbook.Sheets[sheetName];
         const rawRows: Record<string, any>[] = XLSX.utils.sheet_to_json(ws);
-
-        // Normalize column names
         const normalizedRows = rawRows.map(row => {
           const newRow: Record<string, any> = {};
           for (const [key, value] of Object.entries(row)) {
@@ -129,26 +144,18 @@ export function parseExcelFile(file: File, preferredSheet?: string): Promise<{ e
           }
           return newRow;
         });
-
         const colNames = normalizedRows.length > 0 ? Object.keys(normalizedRows[0]) : [];
         const validation = validate(normalizedRows, colNames);
         const employees = normalizedRows.map(rowToEmployee);
-
         resolve({
           employees,
           upload: {
-            fileName: file.name,
-            sheetName,
-            rowCount: employees.length,
-            colCount: colNames.length,
-            timestamp: new Date(),
-            validation,
-            sheetNames,
+            fileName: file.name, sheetName,
+            rowCount: employees.length, colCount: colNames.length,
+            timestamp: new Date(), validation, sheetNames,
           },
         });
-      } catch (err) {
-        reject(err);
-      }
+      } catch (err) { reject(err); }
     };
     reader.onerror = () => reject(new Error('Failed to read file'));
     reader.readAsArrayBuffer(file);

@@ -15,6 +15,15 @@ const EXIT_REASONS = ['Better Opportunity', 'Personal Reasons', 'Relocation', 'H
 const SKILLS = ['Python', 'JavaScript', 'SQL', 'Excel', 'Tableau', 'React', 'Java', 'AWS', 'Communication', 'Leadership', 'Project Management', 'Data Analysis', 'Machine Learning', 'Salesforce', 'SAP'];
 const COMPETENCIES = ['Problem Solving', 'Team Work', 'Communication', 'Leadership', 'Innovation', 'Customer Focus', 'Strategic Thinking', 'Adaptability'];
 
+// New filter field values
+const COMPANIES = ['TechCorp India', 'InfoVista Ltd', 'CloudNine Solutions', 'DataPrime Inc'];
+const EMPLOYMENT_TYPES = ['Full-Time', 'Contract', 'Part-Time', 'Intern'];
+const BUSINESS_UNITS = ['Digital Services', 'Consulting', 'Products', 'Managed Services'];
+const AREAS = ['Metro', 'Tier-1', 'Tier-2', 'Remote'];
+const FUNCTIONS = ['Technology', 'Business', 'Support', 'Strategy', 'Corporate'];
+const DEPARTMENTS = ['Engineering', 'Finance', 'Human Resources', 'Marketing', 'Operations', 'Sales', 'Research', 'Legal'];
+const BANDS = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6'];
+
 function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 function randInt(min: number, max: number): number { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function randDate(start: Date, end: Date): Date {
@@ -33,8 +42,6 @@ export function generateDemoData(count: number = 250): Employee[] {
 
     const dob = randDate(new Date(1965, 0, 1), new Date(2002, 0, 1));
     const doj = randDate(new Date(2019, 0, 1), new Date(2025, 11, 31));
-
-    // ~20% have exited
     const hasExited = Math.random() < 0.2;
     const doe = hasExited ? randDate(new Date(Math.max(doj.getTime() + 90 * 86400000, new Date(2021, 0, 1).getTime())), new Date(2025, 11, 31)) : null;
 
@@ -67,6 +74,15 @@ export function generateDemoData(count: number = 250): Employee[] {
       skills_2: pick(SKILLS),
       skills_3: Math.random() < 0.7 ? pick(SKILLS) : null,
       competency: pick(COMPETENCIES),
+      // New filter fields
+      company: pick(COMPANIES),
+      employment_type: pick(EMPLOYMENT_TYPES),
+      employment_status: hasExited ? 'Inactive' : 'Active',
+      business_unit: pick(BUSINESS_UNITS),
+      area: pick(AREAS),
+      function_name: pick(FUNCTIONS),
+      department: pick(DEPARTMENTS),
+      band: pick(BANDS),
     });
   }
 

@@ -1,19 +1,18 @@
-import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { MASTER_FILE_NAME } from '@/lib/config';
-import DateControls from '@/components/DateControls';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import FilterBar from '@/components/FilterBar';
 import PeopleSection from '@/components/dashboard/PeopleSection';
 import JoinersSection from '@/components/dashboard/JoinersSection';
 import AttritionSection from '@/components/dashboard/AttritionSection';
+import OrganizationSection from '@/components/dashboard/OrganizationSection';
+import DemographicsSection from '@/components/dashboard/DemographicsSection';
 
 export default function Dashboard() {
   const { employees, filteredEmployees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError, asOfDate, fyStart, fyEnd, loadDemo } = useData();
   const navigate = useNavigate();
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  const handleRefresh = useCallback(() => setRefreshKey(k => k + 1), []);
 
   if (isLoading) {
     return (
@@ -63,29 +62,34 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] p-6">
-      <div className="container max-w-7xl space-y-10">
+    <div className="min-h-[calc(100vh-64px)] p-4 md:p-6">
+      <div className="container max-w-7xl space-y-5">
         {/* Master File Banner */}
         {isMasterFileMode && (
           <div className="flex items-center gap-3 rounded-xl bg-people-muted border border-people/20 px-5 py-3">
             <FileSpreadsheet className="w-5 h-5 text-people flex-shrink-0" />
             <p className="text-sm font-medium text-people">
-              Master File Test Mode – using {uploadResult?.fileName || MASTER_FILE_NAME}
+              Master File Mode – {uploadResult?.fileName || MASTER_FILE_NAME}
             </p>
             <span className="ml-auto text-xs text-muted-foreground">
-              {uploadResult?.rowCount?.toLocaleString()} rows · {uploadResult?.colCount} cols · Sheet: {uploadResult?.sheetName}
+              {uploadResult?.rowCount?.toLocaleString()} rows · {uploadResult?.colCount} cols
             </span>
           </div>
         )}
 
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-display font-bold text-foreground mb-1">HR Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">HR Analytics Dashboard</h1>
           <p className="text-muted-foreground text-sm">
-            {isDemo ? 'Viewing demo data' : `Viewing ${uploadResult?.fileName}`} · {filteredEmployees.length.toLocaleString()} employees
-            {filteredEmployees.length !== employees.length && <span className="text-muted-foreground/70 ml-1">(filtered from {employees.length.toLocaleString()})</span>}
+            {isDemo ? 'Demo data' : uploadResult?.fileName} · {filteredEmployees.length.toLocaleString()} employees
+            {filteredEmployees.length !== employees.length && (
+              <span className="text-muted-foreground/60 ml-1">(of {employees.length.toLocaleString()})</span>
+            )}
           </p>
         </div>
+
+        {/* Filters */}
+        <FilterBar />
 
         {/* Validation warnings */}
         {uploadResult?.validation?.missingColumns && uploadResult.validation.missingColumns.length > 0 && (
@@ -93,17 +97,38 @@ export default function Dashboard() {
             <p className="text-sm font-semibold text-attrition mb-1">
               ⚠ Missing {uploadResult.validation.missingColumns.length} expected column(s)
             </p>
-            <p className="text-xs text-muted-foreground">
-              {uploadResult.validation.missingColumns.join(', ')}
-            </p>
+            <p className="text-xs text-muted-foreground">{uploadResult.validation.missingColumns.join(', ')}</p>
           </div>
         )}
 
-        <DateControls onRefresh={handleRefresh} />
+        {/* Tab-based Reports */}
+        <Tabs defaultValue="people" className="w-full">
+          <div className="sticky top-16 z-10 bg-background pb-2">
+            <TabsList className="w-full justify-start bg-card border border-border rounded-xl h-11 p-1 overflow-x-auto">
+              <TabsTrigger value="people" className="rounded-lg text-xs font-medium">People Snapshot</TabsTrigger>
+              <TabsTrigger value="hiring" className="rounded-lg text-xs font-medium">Hiring</TabsTrigger>
+              <TabsTrigger value="attrition" className="rounded-lg text-xs font-medium">Attrition</TabsTrigger>
+              <TabsTrigger value="organization" className="rounded-lg text-xs font-medium">Organization</TabsTrigger>
+              <TabsTrigger value="demographics" className="rounded-lg text-xs font-medium">Demographics</TabsTrigger>
+            </TabsList>
+          </div>
 
-        <PeopleSection key={`p-${refreshKey}`} employees={filteredEmployees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
-        <JoinersSection key={`j-${refreshKey}`} employees={filteredEmployees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
-        <AttritionSection key={`a-${refreshKey}`} employees={filteredEmployees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
+          <TabsContent value="people" className="mt-4">
+            <PeopleSection employees={filteredEmployees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
+          </TabsContent>
+          <TabsContent value="hiring" className="mt-4">
+            <JoinersSection employees={filteredEmployees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
+          </TabsContent>
+          <TabsContent value="attrition" className="mt-4">
+            <AttritionSection employees={filteredEmployees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
+          </TabsContent>
+          <TabsContent value="organization" className="mt-4">
+            <OrganizationSection employees={filteredEmployees} asOfDate={asOfDate} />
+          </TabsContent>
+          <TabsContent value="demographics" className="mt-4">
+            <DemographicsSection employees={filteredEmployees} asOfDate={asOfDate} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

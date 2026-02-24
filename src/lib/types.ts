@@ -1,11 +1,14 @@
 export interface Employee {
+  // Dates
   date_of_joining: Date | null;
   date_of_exit: Date | null;
   date_of_birth: Date | null;
+  // Numbers
   total_exp_yrs: number | null;
   training_hours: number | null;
   satisfaction_score: number | null;
   total_ctc_pa: number | null;
+  // Categorical - core
   gender: string | null;
   hiring_source: string | null;
   zone: string | null;
@@ -22,8 +25,35 @@ export interface Employee {
   competency: string | null;
   employee_name?: string | null;
   employee_id?: string | null;
+  // Filter fields
+  company: string | null;
+  employment_type: string | null;
+  employment_status: string | null;
+  business_unit: string | null;
+  area: string | null;
+  function_name: string | null;
+  department: string | null;
+  band: string | null;
+  // Dynamic extra fields
   [key: string]: any;
 }
+
+export interface FilterConfig {
+  key: string;
+  label: string;
+  field: string;
+}
+
+export const FILTER_FIELDS: FilterConfig[] = [
+  { key: 'company', label: 'Company', field: 'company' },
+  { key: 'employmentType', label: 'Employment Type', field: 'employment_type' },
+  { key: 'businessUnit', label: 'Business Unit', field: 'business_unit' },
+  { key: 'zone', label: 'Zone', field: 'zone' },
+  { key: 'area', label: 'Area', field: 'area' },
+  { key: 'function', label: 'Function', field: 'function_name' },
+  { key: 'department', label: 'Department', field: 'department' },
+  { key: 'band', label: 'Band', field: 'band' },
+];
 
 export interface PeopleKPIs {
   totalEmployees: number;
@@ -89,4 +119,4 @@ export interface ChartSpec {
   yLabel?: string;
 }
 
-export type SectionType = 'people' | 'joiners' | 'attrition';
+export type SectionType = 'people' | 'joiners' | 'attrition' | 'organization' | 'demographics';

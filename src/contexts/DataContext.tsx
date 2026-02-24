@@ -1,8 +1,17 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
-import { Employee, UploadResult } from '@/lib/types';
+import { Employee, UploadResult, FILTER_FIELDS } from '@/lib/types';
 import { generateDemoData } from '@/lib/demoData';
 import { MASTER_FILE_TEST_MODE } from '@/lib/config';
 import { loadMasterFile } from '@/lib/masterFileLoader';
+import { titleCase } from '@/lib/formatters';
+
+function getFY(date: Date) {
+  const m = date.getMonth();
+  const y = date.getFullYear();
+  return m >= 3
+    ? { fyStart: new Date(y, 3, 1), fyEnd: new Date(y + 1, 2, 31) }
+    : { fyStart: new Date(y - 1, 3, 1), fyEnd: new Date(y, 2, 31) };
+}
 
 interface DataContextType {
   employees: Employee[];
@@ -15,22 +24,17 @@ interface DataContextType {
   setData: (employees: Employee[], upload: UploadResult) => void;
   loadDemo: () => void;
   asOfDate: Date;
+  setAsOfDate: (d: Date) => void;
+  useToday: boolean;
+  setUseToday: (b: boolean) => void;
   fyStart: Date;
   fyEnd: Date;
-  setAsOfDate: (d: Date) => void;
-  setFyStart: (d: Date) => void;
-  setFyEnd: (d: Date) => void;
-  
-  // Filters
-  departments: string[];
-  locations: string[];
-  ratings: string[];
-  selectedDepartment: string;
-  selectedLocation: string;
-  selectedRating: string;
-  setDepartment: (d: string) => void;
-  setLocation: (l: string) => void;
-  setRating: (r: string) => void;
+  filters: Record<string, string[] | null>;
+  setFilter: (key: string, values: string[] | null) => void;
+  clearAllFilters: () => void;
+  availableFilterValues: Record<string, string[]>;
+  activeFilterCount: number;
+  appliedFiltersSnapshot: Record<string, string>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -42,46 +46,96 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [isMasterFileMode, setIsMasterFileMode] = useState(MASTER_FILE_TEST_MODE);
   const [isLoading, setIsLoading] = useState(MASTER_FILE_TEST_MODE);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [asOfDate, setAsOfDate] = useState(new Date(2025, 3, 30));
-  const [fyStart, setFyStart] = useState(new Date(2025, 3, 1));
-  const [fyEnd, setFyEnd] = useState(new Date(2026, 2, 31));
 
-  // Filter states
-  const [selectedDepartment, setDepartment] = useState('All');
-  const [selectedLocation, setLocation] = useState('All');
-  const [selectedRating, setRating] = useState('All');
+  // Date state
+  const [useToday, setUseTodayState] = useState(true);
+  const [asOfDate, setAsOfDateState] = useState(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); return d;
+  });
 
-  // Derived lists for dropdowns
-  const departments = useMemo(() => {
-    const depts = new Set(employees.map(e => e.employment_sector).filter(Boolean) as string[]);
-    return ['All', ...Array.from(depts).sort()];
+  const { fyStart, fyEnd } = useMemo(() => getFY(asOfDate), [asOfDate]);
+
+  const setUseToday = useCallback((val: boolean) => {
+    setUseTodayState(val);
+    if (val) { const d = new Date(); d.setHours(0, 0, 0, 0); setAsOfDateState(d); }
+  }, []);
+
+  const setAsOfDate = useCallback((d: Date) => {
+    setUseTodayState(false);
+    setAsOfDateState(d);
+  }, []);
+
+  // Multi-select filters: null = all selected
+  const [filters, setFilters] = useState<Record<string, string[] | null>>({});
+
+  const setFilter = useCallback((key: string, values: string[] | null) => {
+    setFilters(prev => ({ ...prev, [key]: values }));
+  }, []);
+
+  const clearAllFilters = useCallback(() => setFilters({}), []);
+
+  // Available filter values from data
+  const availableFilterValues = useMemo(() => {
+    const result: Record<string, string[]> = {};
+    for (const { key, field } of FILTER_FIELDS) {
+      const vals = new Set<string>();
+      employees.forEach(e => {
+        const v = e[field];
+        if (v) vals.add(titleCase(String(v)));
+      });
+      const sorted = Array.from(vals).sort();
+      if (sorted.length > 0) result[key] = sorted;
+    }
+    return result;
   }, [employees]);
 
-  const locations = useMemo(() => {
-    const locs = new Set(employees.map(e => e.zone).filter(Boolean) as string[]);
-    return ['All', ...Array.from(locs).sort()];
-  }, [employees]);
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    for (const { key } of FILTER_FIELDS) {
+      const sel = filters[key];
+      if (sel !== null && sel !== undefined) {
+        const all = availableFilterValues[key];
+        if (all && sel.length !== all.length) count++;
+      }
+    }
+    return count;
+  }, [filters, availableFilterValues]);
 
-  const ratings = useMemo(() => {
-    const rates = new Set(employees.map(e => e.rating_25).filter(Boolean) as string[]);
-    return ['All', ...Array.from(rates).sort()];
-  }, [employees]);
+  // Snapshot for exports
+  const appliedFiltersSnapshot = useMemo(() => {
+    const snap: Record<string, string> = {};
+    for (const { key, label } of FILTER_FIELDS) {
+      const sel = filters[key];
+      if (sel !== null && sel !== undefined) {
+        const all = availableFilterValues[key];
+        if (all && sel.length !== all.length) {
+          snap[label] = sel.length <= 3 ? sel.join(', ') : `${sel.length} of ${all.length}`;
+        }
+      }
+    }
+    return snap;
+  }, [filters, availableFilterValues]);
 
-  // Filtered employees
   const filteredEmployees = useMemo(() => {
-    return employees.filter(e => {
-      if (selectedDepartment !== 'All' && e.employment_sector !== selectedDepartment) return false;
-      if (selectedLocation !== 'All' && e.zone !== selectedLocation) return false;
-      if (selectedRating !== 'All' && e.rating_25 !== selectedRating) return false;
+    return employees.filter(emp => {
+      for (const { key, field } of FILTER_FIELDS) {
+        const sel = filters[key];
+        if (!sel || sel.length === 0) {
+          if (sel !== null && sel !== undefined && sel.length === 0) return false;
+          continue;
+        }
+        const val = emp[field];
+        const normalized = val ? titleCase(String(val)) : null;
+        if (!normalized || !sel.includes(normalized)) return false;
+      }
       return true;
     });
-  }, [employees, selectedDepartment, selectedLocation, selectedRating]);
+  }, [employees, filters]);
 
-  // Auto-load master file in test mode
+  // Auto-load master file
   useEffect(() => {
     if (!MASTER_FILE_TEST_MODE) return;
     let cancelled = false;
-
     (async () => {
       try {
         const result = await loadMasterFile();
@@ -98,42 +152,33 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) setIsLoading(false);
       }
     })();
-
     return () => { cancelled = true; };
   }, []);
 
   const setData = useCallback((emps: Employee[], upload: UploadResult) => {
-    setEmployees(emps);
-    setUploadResult(upload);
-    setIsDemo(false);
-    setIsMasterFileMode(false);
+    setEmployees(emps); setUploadResult(upload);
+    setIsDemo(false); setIsMasterFileMode(false); setFilters({});
   }, []);
 
   const loadDemo = useCallback(() => {
     const demo = generateDemoData(250);
     setEmployees(demo);
     setUploadResult({
-      fileName: 'demo_data.xlsx',
-      sheetName: 'Master',
-      rowCount: demo.length,
-      colCount: 22,
+      fileName: 'demo_data.xlsx', sheetName: 'Master', rowCount: demo.length, colCount: 30,
       timestamp: new Date(),
       validation: { missingColumns: [], duplicateIds: 0, invalidDates: {}, invalidNumbers: {}, nullRates: {} },
       sheetNames: ['Master'],
     });
-    setIsDemo(true);
-    setIsMasterFileMode(false);
+    setIsDemo(true); setIsMasterFileMode(false); setFilters({});
   }, []);
 
   return (
     <DataContext.Provider value={{
       employees, filteredEmployees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError,
       setData, loadDemo,
-      asOfDate, fyStart, fyEnd,
-      setAsOfDate, setFyStart, setFyEnd,
-      departments, locations, ratings,
-      selectedDepartment, selectedLocation, selectedRating,
-      setDepartment, setLocation, setRating
+      asOfDate, setAsOfDate, useToday, setUseToday,
+      fyStart, fyEnd,
+      filters, setFilter, clearAllFilters, availableFilterValues, activeFilterCount, appliedFiltersSnapshot,
     }}>
       {children}
     </DataContext.Provider>
