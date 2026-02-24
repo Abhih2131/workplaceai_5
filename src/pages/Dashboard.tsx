@@ -9,7 +9,7 @@ import JoinersSection from '@/components/dashboard/JoinersSection';
 import AttritionSection from '@/components/dashboard/AttritionSection';
 
 export default function Dashboard() {
-  const { employees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError, asOfDate, fyStart, fyEnd, loadDemo } = useData();
+  const { employees, filteredEmployees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError, asOfDate, fyStart, fyEnd, loadDemo } = useData();
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
 
