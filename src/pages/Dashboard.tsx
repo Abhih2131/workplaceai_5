@@ -82,7 +82,8 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground mb-1">HR Dashboard</h1>
           <p className="text-muted-foreground text-sm">
-            {isDemo ? 'Viewing demo data' : `Viewing ${uploadResult?.fileName}`} · {employees.length.toLocaleString()} employees
+            {isDemo ? 'Viewing demo data' : `Viewing ${uploadResult?.fileName}`} · {filteredEmployees.length.toLocaleString()} employees
+            {filteredEmployees.length !== employees.length && <span className="text-muted-foreground/70 ml-1">(filtered from {employees.length.toLocaleString()})</span>}
           </p>
         </div>
 
