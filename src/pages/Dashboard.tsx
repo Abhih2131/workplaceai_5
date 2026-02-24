@@ -9,7 +9,7 @@ import JoinersSection from '@/components/dashboard/JoinersSection';
 import AttritionSection from '@/components/dashboard/AttritionSection';
 
 export default function Dashboard() {
-  const { employees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError, asOfDate, fyStart, fyEnd, loadDemo } = useData();
+  const { employees, filteredEmployees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError, asOfDate, fyStart, fyEnd, loadDemo } = useData();
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -82,7 +82,8 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground mb-1">HR Dashboard</h1>
           <p className="text-muted-foreground text-sm">
-            {isDemo ? 'Viewing demo data' : `Viewing ${uploadResult?.fileName}`} · {employees.length.toLocaleString()} employees
+            {isDemo ? 'Viewing demo data' : `Viewing ${uploadResult?.fileName}`} · {filteredEmployees.length.toLocaleString()} employees
+            {filteredEmployees.length !== employees.length && <span className="text-muted-foreground/70 ml-1">(filtered from {employees.length.toLocaleString()})</span>}
           </p>
         </div>
 
@@ -100,9 +101,9 @@ export default function Dashboard() {
 
         <DateControls onRefresh={handleRefresh} />
 
-        <PeopleSection key={`p-${refreshKey}`} employees={employees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
-        <JoinersSection key={`j-${refreshKey}`} employees={employees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
-        <AttritionSection key={`a-${refreshKey}`} employees={employees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
+        <PeopleSection key={`p-${refreshKey}`} employees={filteredEmployees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
+        <JoinersSection key={`j-${refreshKey}`} employees={filteredEmployees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
+        <AttritionSection key={`a-${refreshKey}`} employees={filteredEmployees} asOfDate={asOfDate} fyStart={fyStart} fyEnd={fyEnd} />
       </div>
     </div>
   );
