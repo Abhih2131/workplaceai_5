@@ -1,11 +1,16 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { Employee, UploadResult } from '@/lib/types';
 import { generateDemoData } from '@/lib/demoData';
+import { MASTER_FILE_TEST_MODE } from '@/lib/config';
+import { loadMasterFile } from '@/lib/masterFileLoader';
 
 interface DataContextType {
   employees: Employee[];
   uploadResult: UploadResult | null;
   isDemo: boolean;
+  isMasterFileMode: boolean;
+  isLoading: boolean;
+  loadError: string | null;
   setData: (employees: Employee[], upload: UploadResult) => void;
   loadDemo: () => void;
   asOfDate: Date;
@@ -22,14 +27,43 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [isDemo, setIsDemo] = useState(false);
-  const [asOfDate, setAsOfDate] = useState(new Date(2025, 3, 30)); // 2025-04-30
-  const [fyStart, setFyStart] = useState(new Date(2025, 3, 1));    // 2025-04-01
-  const [fyEnd, setFyEnd] = useState(new Date(2026, 2, 31));       // 2026-03-31
+  const [isMasterFileMode, setIsMasterFileMode] = useState(MASTER_FILE_TEST_MODE);
+  const [isLoading, setIsLoading] = useState(MASTER_FILE_TEST_MODE);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [asOfDate, setAsOfDate] = useState(new Date(2025, 3, 30));
+  const [fyStart, setFyStart] = useState(new Date(2025, 3, 1));
+  const [fyEnd, setFyEnd] = useState(new Date(2026, 2, 31));
+
+  // Auto-load master file in test mode
+  useEffect(() => {
+    if (!MASTER_FILE_TEST_MODE) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const result = await loadMasterFile();
+        if (cancelled) return;
+        setEmployees(result.employees);
+        setUploadResult(result.upload);
+        setIsDemo(false);
+        setIsMasterFileMode(true);
+      } catch (e: any) {
+        if (cancelled) return;
+        console.error('[MasterFile] Load failed:', e);
+        setLoadError(e.message || 'Failed to load master file');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
 
   const setData = useCallback((emps: Employee[], upload: UploadResult) => {
     setEmployees(emps);
     setUploadResult(upload);
     setIsDemo(false);
+    setIsMasterFileMode(false);
   }, []);
 
   const loadDemo = useCallback(() => {
@@ -45,11 +79,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       sheetNames: ['Master'],
     });
     setIsDemo(true);
+    setIsMasterFileMode(false);
   }, []);
 
   return (
     <DataContext.Provider value={{
-      employees, uploadResult, isDemo,
+      employees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError,
       setData, loadDemo,
       asOfDate, fyStart, fyEnd,
       setAsOfDate, setFyStart, setFyEnd,
