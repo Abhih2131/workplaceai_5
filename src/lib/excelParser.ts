@@ -82,7 +82,7 @@ function rowToEmployee(row: Record<string, any>): Employee {
     satisfaction_score: parseNum(row.satisfaction_score),
     total_ctc_pa: parseNum(row.total_ctc_pa),
     gender: safeStr(row.gender),
-    hiring_source: safeStr(row.hiring_source),
+    hiring_source: safeStr(row.hiring_source) || safeStr(row.hiring_source_category),
     zone: safeStr(row.zone),
     highest_qualification: safeStr(row.highest_qualification),
     employment_sector: safeStr(row.employment_sector),
@@ -97,7 +97,6 @@ function rowToEmployee(row: Record<string, any>): Employee {
     competency: safeStr(row.competency),
     employee_name: safeStr(row.employee_name) || safeStr(row.emp_name) || safeStr(row.name),
     employee_id: safeStr(row.employee_id) || safeStr(row.emp_id) || safeStr(row.id),
-    ...row,
   };
 }
 
