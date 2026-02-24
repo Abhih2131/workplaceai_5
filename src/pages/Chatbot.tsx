@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Send, Mic, Globe, Bot, User } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
+// @ts-ignore - isLoading may not exist in older context
 import { processQuery } from '@/lib/chatEngine';
 import ReactMarkdown from 'react-markdown';
 
