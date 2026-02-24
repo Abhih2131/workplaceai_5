@@ -60,7 +60,7 @@ export default function Chatbot() {
           <p className="text-sm text-muted-foreground">Ask questions about your employee data in natural language</p>
         </div>
 
-        {employees.length === 0 && (
+        {employees.length === 0 && !isLoading && (
           <div className="rounded-xl bg-attrition-muted border border-attrition/20 p-4 mb-4">
             <p className="text-sm text-attrition font-medium">No data loaded.</p>
             <button onClick={loadDemo} className="text-sm text-attrition underline mt-1">Load demo data</button>
