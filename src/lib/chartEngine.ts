@@ -29,20 +29,37 @@ function getActiveAtDate(employees: Employee[], date: Date): Employee[] {
   );
 }
 
-// ===== PEOPLE SNAPSHOT CHARTS =====
+/** Get rolling 5 FY range ending at current FY. Python uses 2021-2025 hardcoded; we make dynamic. */
+function getRolling5FYs(asOfDate: Date): number[] {
+  const month = asOfDate.getMonth(); // 0-indexed
+  const year = asOfDate.getFullYear();
+  // Current FY start year: if month >= 3 (Apr+), current year; else previous year
+  const currentFYStartYear = month >= 3 ? year : year - 1;
+  // Rolling 5 FYs ending at current
+  const years: number[] = [];
+  for (let i = 4; i >= 0; i--) {
+    years.push(currentFYStartYear - i);
+  }
+  return years;
+}
 
-function manpowerGrowth(employees: Employee[]): ChartSpec {
+// ===== PEOPLE SNAPSHOT CHARTS =====
+// Python: 1_People_Snapshot.py
+
+function manpowerGrowth(employees: Employee[], asOfDate: Date): ChartSpec {
+  const fyYears = getRolling5FYs(asOfDate);
   const data: ChartDataPoint[] = [];
-  for (let yr = 2021; yr <= 2025; yr++) {
-    const end = new Date(yr + 1, 2, 31);
+  for (const yr of fyYears) {
+    const end = new Date(yr + 1, 2, 31); // Mar 31 of FY end year
     data.push({ name: `FY-${yr + 1}`, value: getActiveAtDate(employees, end).length });
   }
   return { title: 'Manpower Growth', type: 'line', data, yLabel: 'Headcount' };
 }
 
-function manpowerCost(employees: Employee[]): ChartSpec {
+function manpowerCost(employees: Employee[], asOfDate: Date): ChartSpec {
+  const fyYears = getRolling5FYs(asOfDate);
   const data: ChartDataPoint[] = [];
-  for (let yr = 2021; yr <= 2025; yr++) {
+  for (const yr of fyYears) {
     const end = new Date(yr + 1, 2, 31);
     const active = getActiveAtDate(employees, end);
     const cost = active.reduce((s, e) => s + (e.total_ctc_pa ?? 0), 0) / 1e7;
@@ -51,9 +68,11 @@ function manpowerCost(employees: Employee[]): ChartSpec {
   return { title: 'Manpower Cost', type: 'bar', data, yLabel: 'INR Cr' };
 }
 
-function attritionTrendPeople(employees: Employee[]): ChartSpec {
+// Python: attrition trend in People Snapshot uses avg HC denominator
+function attritionTrendPeople(employees: Employee[], asOfDate: Date): ChartSpec {
+  const fyYears = getRolling5FYs(asOfDate);
   const data: ChartDataPoint[] = [];
-  for (let yr = 2021; yr <= 2025; yr++) {
+  for (const yr of fyYears) {
     const start = new Date(yr, 3, 1);
     const end = new Date(yr + 1, 2, 31);
     const exits = employees.filter(e => e.date_of_exit && e.date_of_exit >= start && e.date_of_exit <= end).length;
@@ -65,11 +84,13 @@ function attritionTrendPeople(employees: Employee[]): ChartSpec {
   return { title: 'Attrition Trend', type: 'bar', data, yLabel: '%' };
 }
 
+// Python: gender donut (hole=0.3)
 function genderDiversity(employees: Employee[], asOfDate: Date): ChartSpec {
   const active = employees.filter(e => !e.date_of_exit || e.date_of_exit > asOfDate);
   return { title: 'Gender Diversity', type: 'donut', data: valueCounts(active.map(e => e.gender)) };
 }
 
+// Python: age bins [0,20,25,30,35,40,45,50,55,60,inf], labels ["<20","20-24",...,"60+"]
 function ageDistribution(employees: Employee[], asOfDate: Date): ChartSpec {
   const active = employees.filter(e => !e.date_of_exit || e.date_of_exit > asOfDate);
   const ages = active.filter(e => e.date_of_birth).map(e => Math.floor(diffDays(asOfDate, e.date_of_birth!) / 365.25));
@@ -78,15 +99,17 @@ function ageDistribution(employees: Employee[], asOfDate: Date): ChartSpec {
   return { title: 'Age Distribution', type: 'bar', data: bucketize(ages, bins, labels) };
 }
 
+// Python: tenure bins [0,0.5,1,3,5,10,inf], labels exactly as below
 function tenureDistribution(employees: Employee[], asOfDate: Date): ChartSpec {
   const active = employees.filter(e => !e.date_of_exit || e.date_of_exit > asOfDate);
   const tenures = active.filter(e => e.date_of_joining).map(e => diffDays(asOfDate, e.date_of_joining!) / 365.25);
   const bins = [0, 0.5, 1, 3, 5, 10, Infinity];
-  const labels = ['0–6M', '6–12M', '1–3Y', '3–5Y', '5–10Y', '10+Y'];
+  const labels = ['0–6 Months', '6–12 Months', '1–3 Years', '3–5 Years', '5–10 Years', '10+ Years'];
   return { title: 'Tenure Distribution', type: 'bar', data: bucketize(tenures, bins, labels) };
 }
 
 // ===== JOINERS SNAPSHOT CHARTS =====
+// Python: 2_Joiners_Snapshot.py
 
 function hiringSourceDist(joiners: Employee[]): ChartSpec {
   return { title: 'Hiring Source Distribution', type: 'donut', data: valueCounts(joiners.map(e => e.hiring_source)) };
@@ -100,33 +123,41 @@ function genderSplitJoiners(joiners: Employee[]): ChartSpec {
   return { title: 'Gender Split of Joiners', type: 'pie', data: valueCounts(joiners.map(e => e.gender)) };
 }
 
+// Python: "Employment Sector Distribution" bar chart
 function sectorDist(joiners: Employee[]): ChartSpec {
-  return { title: 'Sector Distribution', type: 'bar', data: valueCounts(joiners.map(e => e.employment_sector)) };
+  return { title: 'Employment Sector Distribution', type: 'bar', data: valueCounts(joiners.map(e => e.employment_sector)) };
 }
 
+// Python: experience bins [0,1,3,5,10,inf], labels ['<1 Yr','1–3 Yrs','3–5 Yrs','5–10 Yrs','10+ Yrs']
 function expRangeJoiners(joiners: Employee[]): ChartSpec {
   const exps = joiners.filter(e => e.total_exp_yrs !== null).map(e => e.total_exp_yrs!);
   const bins = [0, 1, 3, 5, 10, Infinity];
-  const labels = ['<1Y', '1–3Y', '3–5Y', '5–10Y', '10+Y'];
-  return { title: 'Experience Range', type: 'bar', data: bucketize(exps, bins, labels) };
+  const labels = ['<1 Yr', '1–3 Yrs', '3–5 Yrs', '5–10 Yrs', '10+ Yrs'];
+  return { title: 'Experience Range of Joiners', type: 'bar', data: bucketize(exps, bins, labels) };
 }
 
+// Python: word cloud of unique_job_role → VISUAL SUBSTITUTION to bar chart
 function jobRolesHired(joiners: Employee[]): ChartSpec {
   const roles = joiners.map(e => e.unique_job_role).filter(Boolean) as string[];
-  return { title: 'Job Roles Hired', type: 'wordcloud', data: valueCounts(roles).slice(0, 30) };
+  return { title: 'Unique Job Roles Hired', type: 'wordcloud', data: valueCounts(roles).slice(0, 30) };
 }
 
 // ===== ATTRITION SNAPSHOT CHARTS =====
+// Python: 3_Attrition_Snapshot.py
 
-function attritionTrendAll(employees: Employee[]): ChartSpec {
+// Python attrition trend: counts exits per FY using year+1 logic (line 83,90)
+// Note: Python uses `date_of_exit.dt.year.apply(lambda y: f"FY-{y+1}")` which doesn't
+// properly account for Apr-Mar FY boundaries. We preserve Python logic exactly.
+function attritionTrendAll(employees: Employee[], asOfDate: Date): ChartSpec {
   const allExits = employees.filter(e => e.date_of_exit instanceof Date && !isNaN(e.date_of_exit.getTime()));
+  const fyYears = getRolling5FYs(asOfDate);
+  const allowedFYs = fyYears.map(yr => `FY-${yr + 1}`);
   const fyMap: Record<string, number> = {};
-  const allowedFYs = ['FY-2022', 'FY-2023', 'FY-2024', 'FY-2025', 'FY-2026'];
   allExits.forEach(e => {
     const d = e.date_of_exit!;
-    const month = d.getMonth();
     const year = d.getFullYear();
-    const fy = month >= 3 ? `FY-${year + 1}` : `FY-${year}`;
+    // Python logic: FY-{year+1} regardless of month
+    const fy = `FY-${year + 1}`;
     if (allowedFYs.includes(fy)) fyMap[fy] = (fyMap[fy] || 0) + 1;
   });
   return { title: 'Attrition Trend', type: 'bar', data: allowedFYs.map(fy => ({ name: fy, value: fyMap[fy] || 0 })), yLabel: 'Exits' };
@@ -136,31 +167,36 @@ function attritionByExitType(exits: Employee[]): ChartSpec {
   return { title: 'Attrition by Exit Type', type: 'donut', data: valueCounts(exits.map(e => e.exit_type)) };
 }
 
+// Python: tenure bins [0,1,3,5,10,inf], labels ["<1","1–3","3–5","5–10","10+"]
 function tenureExited(exits: Employee[]): ChartSpec {
   const tenures = exits.filter(e => e.date_of_joining && e.date_of_exit).map(e => diffDays(e.date_of_exit!, e.date_of_joining!) / 365.25);
   const bins = [0, 1, 3, 5, 10, Infinity];
-  const labels = ['<1Y', '1–3Y', '3–5Y', '5–10Y', '10+Y'];
-  return { title: 'Tenure of Exited', type: 'bar', data: bucketize(tenures, bins, labels) };
+  const labels = ['<1', '1–3', '3–5', '5–10', '10+'];
+  return { title: 'Tenure of Exited Employees', type: 'bar', data: bucketize(tenures, bins, labels) };
 }
 
 function attritionByGender(exits: Employee[]): ChartSpec {
   return { title: 'Attrition by Gender', type: 'pie', data: valueCounts(exits.map(e => e.gender)) };
 }
 
+// Python: "Attrition by Rating (FY)" - rating_25 value_counts
 function attritionByRating(exits: Employee[]): ChartSpec {
-  return { title: 'Attrition by Rating', type: 'bar', data: valueCounts(exits.map(e => e.rating_25)) };
+  return { title: 'Attrition by Rating (FY)', type: 'bar', data: valueCounts(exits.map(e => e.rating_25)) };
 }
 
+// Python: "Exit Reason Distribution" - donut (hole=0.4)
 function exitReasonDist(exits: Employee[]): ChartSpec {
-  return { title: 'Exit Reasons', type: 'donut', data: valueCounts(exits.map(e => e.reason_for_exit)) };
+  return { title: 'Exit Reason Distribution', type: 'donut', data: valueCounts(exits.map(e => e.reason_for_exit)) };
 }
 
+// Python: word cloud from skills_1+2+3 tokens → VISUAL SUBSTITUTION
 function skillLoss(exits: Employee[]): ChartSpec {
   const skills: string[] = [];
   exits.forEach(e => { [e.skills_1, e.skills_2, e.skills_3].forEach(s => { if (s) skills.push(s.toLowerCase().trim()); }); });
   return { title: 'Skill Loss', type: 'wordcloud', data: valueCounts(skills).slice(0, 30) };
 }
 
+// Python: word cloud from competency column → VISUAL SUBSTITUTION
 function competencyLoss(exits: Employee[]): ChartSpec {
   const comps = exits.map(e => e.competency).filter(Boolean).map(c => c!.toLowerCase().trim());
   return { title: 'Competency Loss', type: 'wordcloud', data: valueCounts(comps).slice(0, 30) };
@@ -216,7 +252,14 @@ function employmentTypeDist(active: Employee[]): ChartSpec {
 // ===== PUBLIC API =====
 
 export function computePeopleCharts(employees: Employee[], asOfDate: Date): ChartSpec[] {
-  return [manpowerGrowth(employees), manpowerCost(employees), attritionTrendPeople(employees), genderDiversity(employees, asOfDate), ageDistribution(employees, asOfDate), tenureDistribution(employees, asOfDate)];
+  return [
+    manpowerGrowth(employees, asOfDate),
+    manpowerCost(employees, asOfDate),
+    attritionTrendPeople(employees, asOfDate),
+    genderDiversity(employees, asOfDate),
+    ageDistribution(employees, asOfDate),
+    tenureDistribution(employees, asOfDate),
+  ];
 }
 
 export function computeJoinersCharts(employees: Employee[], fyStart: Date, fyEnd: Date): ChartSpec[] {
@@ -224,9 +267,9 @@ export function computeJoinersCharts(employees: Employee[], fyStart: Date, fyEnd
   return [hiringSourceDist(joiners), qualificationDist(joiners), genderSplitJoiners(joiners), sectorDist(joiners), expRangeJoiners(joiners), jobRolesHired(joiners)];
 }
 
-export function computeAttritionCharts(employees: Employee[], fyStart: Date, fyEnd: Date): ChartSpec[] {
+export function computeAttritionCharts(employees: Employee[], fyStart: Date, fyEnd: Date, asOfDate: Date): ChartSpec[] {
   const exits = employees.filter(e => e.date_of_exit && e.date_of_exit >= fyStart && e.date_of_exit <= fyEnd);
-  return [attritionTrendAll(employees), attritionByExitType(exits), tenureExited(exits), attritionByGender(exits), attritionByRating(exits), exitReasonDist(exits), skillLoss(exits), competencyLoss(exits)];
+  return [attritionTrendAll(employees, asOfDate), attritionByExitType(exits), tenureExited(exits), attritionByGender(exits), attritionByRating(exits), exitReasonDist(exits), skillLoss(exits), competencyLoss(exits)];
 }
 
 export function computeOrganizationCharts(employees: Employee[], asOfDate: Date): ChartSpec[] {

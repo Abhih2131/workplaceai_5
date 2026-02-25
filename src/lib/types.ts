@@ -3,28 +3,46 @@ export interface Employee {
   date_of_joining: Date | null;
   date_of_exit: Date | null;
   date_of_birth: Date | null;
+  last_promotion: Date | null;
+  last_transfer: Date | null;
   // Numbers
   total_exp_yrs: number | null;
+  prev_exp_in_yrs: number | null;
   training_hours: number | null;
   satisfaction_score: number | null;
+  engagement_score: number | null;
   total_ctc_pa: number | null;
+  fixed_ctc_pa: number | null;
+  variable_ctc_pa: number | null;
   // Categorical - core
   gender: string | null;
   hiring_source: string | null;
   zone: string | null;
+  cluster: string | null;
+  location: string | null;
   highest_qualification: string | null;
+  qualification: string | null;
+  qualification_type: string | null;
   employment_sector: string | null;
   unique_job_role: string | null;
   exit_type: string | null;
   rating_25: string | null;
+  rating_24: string | null;
   top_talent: string | null;
+  succession_ready: string | null;
   reason_for_exit: string | null;
   skills_1: string | null;
   skills_2: string | null;
   skills_3: string | null;
   competency: string | null;
-  employee_name?: string | null;
-  employee_id?: string | null;
+  competency_type: string | null;
+  competency_level: string | null;
+  learning_program: string | null;
+  previous_employers: string | null;
+  last_employer: string | null;
+  employee_name: string | null;
+  employee_id: string | null;
+  grade: string | null;
   // Filter fields
   company: string | null;
   employment_type: string | null;
@@ -119,4 +137,4 @@ export interface ChartSpec {
   yLabel?: string;
 }
 
-export type SectionType = 'people' | 'joiners' | 'attrition' | 'organization' | 'demographics';
+export type SectionType = 'people' | 'joiners' | 'attrition' | 'organization' | 'demographics' | 'talent';

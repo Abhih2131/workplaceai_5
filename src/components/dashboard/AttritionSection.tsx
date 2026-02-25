@@ -18,7 +18,7 @@ const section: SectionType = 'attrition';
 
 export default function AttritionSection({ employees, asOfDate, fyStart, fyEnd }: Props) {
   const kpis = useMemo(() => computeAttritionKPIs(employees, asOfDate, fyStart, fyEnd), [employees, asOfDate, fyStart, fyEnd]);
-  const charts = useMemo(() => computeAttritionCharts(employees, fyStart, fyEnd), [employees, fyStart, fyEnd]);
+  const charts = useMemo(() => computeAttritionCharts(employees, fyStart, fyEnd, asOfDate), [employees, fyStart, fyEnd, asOfDate]);
 
   const kpiCards = [
     { label: 'Total Attrition % (FY)', value: formatPercent(kpis.totalAttritionPct), icon: <TrendingDown className="w-5 h-5" /> },

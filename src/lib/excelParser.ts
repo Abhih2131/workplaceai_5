@@ -19,8 +19,8 @@ const REQUIRED_COLUMNS = [
   'reason_for_exit', 'skills_1', 'skills_2', 'skills_3', 'competency',
 ];
 
-const DATE_COLS = ['date_of_joining', 'date_of_exit', 'date_of_birth'];
-const NUM_COLS = ['total_exp_yrs', 'training_hours', 'satisfaction_score', 'total_ctc_pa'];
+const DATE_COLS = ['date_of_joining', 'date_of_exit', 'date_of_birth', 'last_promotion', 'last_transfer'];
+const NUM_COLS = ['total_exp_yrs', 'prev_exp_in_yrs', 'training_hours', 'satisfaction_score', 'engagement_score', 'total_ctc_pa', 'fixed_ctc_pa', 'variable_ctc_pa'];
 
 function validate(rows: Record<string, any>[], colNames: string[]): ValidationResult {
   const missingColumns = REQUIRED_COLUMNS.filter(c => !colNames.includes(c));
@@ -66,46 +66,66 @@ function validate(rows: Record<string, any>[], colNames: string[]): ValidationRe
 // Helper to find first matching column from variations
 function findCol(row: Record<string, any>, ...names: string[]): any {
   for (const n of names) {
-    if (row[n] !== undefined) return row[n];
+    if (row[n] !== undefined && row[n] !== null && row[n] !== '') return row[n];
   }
   return null;
 }
 
 function rowToEmployee(row: Record<string, any>): Employee {
-  // Map known fields
   const mapped: Employee = {
+    // Dates
     date_of_joining: parseDate(row.date_of_joining),
     date_of_exit: parseDate(row.date_of_exit),
     date_of_birth: parseDate(row.date_of_birth),
+    last_promotion: parseDate(findCol(row, 'last_promotion', 'last_promotion_date')),
+    last_transfer: parseDate(findCol(row, 'last_transfer', 'last_transfer_date')),
+    // Numbers
     total_exp_yrs: parseNum(row.total_exp_yrs),
+    prev_exp_in_yrs: parseNum(findCol(row, 'prev_exp_in_yrs', 'previous_experience', 'prev_exp')),
     training_hours: parseNum(row.training_hours),
     satisfaction_score: parseNum(row.satisfaction_score),
+    engagement_score: parseNum(findCol(row, 'engagement_score', 'engagement')),
     total_ctc_pa: parseNum(row.total_ctc_pa),
+    fixed_ctc_pa: parseNum(findCol(row, 'fixed_ctc_pa', 'fixed_ctc')),
+    variable_ctc_pa: parseNum(findCol(row, 'variable_ctc_pa', 'variable_ctc')),
+    // Categorical
     gender: safeStr(row.gender),
     hiring_source: safeStr(findCol(row, 'hiring_source', 'hiring_source_category')),
     zone: safeStr(row.zone),
+    cluster: safeStr(row.cluster),
+    location: safeStr(row.location),
     highest_qualification: safeStr(row.highest_qualification),
+    qualification: safeStr(findCol(row, 'qualification', 'degree')),
+    qualification_type: safeStr(row.qualification_type),
     employment_sector: safeStr(row.employment_sector),
     unique_job_role: safeStr(row.unique_job_role),
     exit_type: safeStr(row.exit_type),
     rating_25: safeStr(row.rating_25),
-    top_talent: safeStr(row.top_talent),
+    rating_24: safeStr(row.rating_24),
+    top_talent: safeStr(findCol(row, 'top_talent', 'Top Talent')),
+    succession_ready: safeStr(row.succession_ready),
     reason_for_exit: safeStr(row.reason_for_exit),
     skills_1: safeStr(row.skills_1),
     skills_2: safeStr(row.skills_2),
     skills_3: safeStr(row.skills_3),
     competency: safeStr(row.competency),
+    competency_type: safeStr(row.competency_type),
+    competency_level: safeStr(row.competency_level),
+    learning_program: safeStr(row.learning_program),
+    previous_employers: safeStr(row.previous_employers),
+    last_employer: safeStr(row.last_employer),
     employee_name: safeStr(findCol(row, 'employee_name', 'emp_name', 'name')),
     employee_id: safeStr(findCol(row, 'employee_id', 'emp_id', 'id')),
-    // New filter fields with flexible column matching
+    grade: safeStr(row.grade),
+    // Filter fields with flexible column matching
     company: safeStr(findCol(row, 'company', 'company_name', 'org', 'organization')),
     employment_type: safeStr(findCol(row, 'employment_type', 'emp_type', 'type_of_employment')),
     employment_status: safeStr(findCol(row, 'employment_status', 'emp_status', 'status')),
-    business_unit: safeStr(findCol(row, 'business_unit', 'bu', 'unit', 'employment_sector')),
+    business_unit: safeStr(findCol(row, 'business_unit', 'bu', 'unit')),
     area: safeStr(findCol(row, 'area', 'region', 'sub_zone')),
     function_name: safeStr(findCol(row, 'function', 'function_name', 'func')),
     department: safeStr(findCol(row, 'department', 'dept', 'department_name')),
-    band: safeStr(findCol(row, 'band', 'grade', 'level', 'job_band')),
+    band: safeStr(findCol(row, 'band', 'job_band')),
   };
 
   // Capture extra fields not already mapped

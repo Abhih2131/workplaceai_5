@@ -9,6 +9,7 @@ import JoinersSection from '@/components/dashboard/JoinersSection';
 import AttritionSection from '@/components/dashboard/AttritionSection';
 import OrganizationSection from '@/components/dashboard/OrganizationSection';
 import DemographicsSection from '@/components/dashboard/DemographicsSection';
+import TalentProfileSection from '@/components/dashboard/TalentProfileSection';
 
 export default function Dashboard() {
   const { employees, filteredEmployees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError, asOfDate, fyStart, fyEnd, loadDemo } = useData();
@@ -110,6 +111,7 @@ export default function Dashboard() {
               <TabsTrigger value="attrition" className="rounded-lg text-xs font-medium">Attrition</TabsTrigger>
               <TabsTrigger value="organization" className="rounded-lg text-xs font-medium">Organization</TabsTrigger>
               <TabsTrigger value="demographics" className="rounded-lg text-xs font-medium">Demographics</TabsTrigger>
+              <TabsTrigger value="talent" className="rounded-lg text-xs font-medium">Talent Profile</TabsTrigger>
             </TabsList>
           </div>
 
@@ -127,6 +129,9 @@ export default function Dashboard() {
           </TabsContent>
           <TabsContent value="demographics" className="mt-4">
             <DemographicsSection employees={filteredEmployees} asOfDate={asOfDate} />
+          </TabsContent>
+          <TabsContent value="talent" className="mt-4">
+            <TalentProfileSection employees={filteredEmployees} asOfDate={asOfDate} />
           </TabsContent>
         </Tabs>
       </div>

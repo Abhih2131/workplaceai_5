@@ -4,12 +4,7 @@ import { parseDate, parseNum, safeStr } from './formatters';
 import { MASTER_FILE_PATH, MASTER_FILE_NAME, MASTER_FILE_PREFERRED_SHEET } from './config';
 
 function normalizeColumnName(name: string): string {
-  return name
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '');
+  return name.toString().toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 }
 
 const REQUIRED_COLUMNS = [
@@ -20,8 +15,8 @@ const REQUIRED_COLUMNS = [
   'reason_for_exit', 'skills_1', 'skills_2', 'skills_3', 'competency',
 ];
 
-const DATE_COLS = ['date_of_joining', 'date_of_exit', 'date_of_birth'];
-const NUM_COLS = ['total_exp_yrs', 'training_hours', 'satisfaction_score', 'total_ctc_pa'];
+const DATE_COLS = ['date_of_joining', 'date_of_exit', 'date_of_birth', 'last_promotion', 'last_transfer'];
+const NUM_COLS = ['total_exp_yrs', 'prev_exp_in_yrs', 'training_hours', 'satisfaction_score', 'engagement_score', 'total_ctc_pa', 'fixed_ctc_pa', 'variable_ctc_pa'];
 
 function validate(rows: Record<string, any>[], colNames: string[]): ValidationResult {
   const missingColumns = REQUIRED_COLUMNS.filter(c => !colNames.includes(c));
@@ -65,7 +60,7 @@ function validate(rows: Record<string, any>[], colNames: string[]): ValidationRe
 }
 
 function findCol(row: Record<string, any>, ...names: string[]): any {
-  for (const n of names) { if (row[n] !== undefined) return row[n]; }
+  for (const n of names) { if (row[n] !== undefined && row[n] !== null && row[n] !== '') return row[n]; }
   return null;
 }
 
@@ -74,26 +69,44 @@ function rowToEmployee(row: Record<string, any>): Employee {
     date_of_joining: parseDate(row.date_of_joining),
     date_of_exit: parseDate(row.date_of_exit),
     date_of_birth: parseDate(row.date_of_birth),
+    last_promotion: parseDate(findCol(row, 'last_promotion', 'last_promotion_date')),
+    last_transfer: parseDate(findCol(row, 'last_transfer', 'last_transfer_date')),
     total_exp_yrs: parseNum(row.total_exp_yrs),
+    prev_exp_in_yrs: parseNum(findCol(row, 'prev_exp_in_yrs', 'previous_experience', 'prev_exp')),
     training_hours: parseNum(row.training_hours),
     satisfaction_score: parseNum(row.satisfaction_score),
+    engagement_score: parseNum(findCol(row, 'engagement_score', 'engagement')),
     total_ctc_pa: parseNum(row.total_ctc_pa),
+    fixed_ctc_pa: parseNum(findCol(row, 'fixed_ctc_pa', 'fixed_ctc')),
+    variable_ctc_pa: parseNum(findCol(row, 'variable_ctc_pa', 'variable_ctc')),
     gender: safeStr(row.gender),
     hiring_source: safeStr(row.hiring_source) || safeStr(row.hiring_source_category),
     zone: safeStr(row.zone),
+    cluster: safeStr(row.cluster),
+    location: safeStr(row.location),
     highest_qualification: safeStr(row.highest_qualification),
+    qualification: safeStr(findCol(row, 'qualification', 'degree')),
+    qualification_type: safeStr(row.qualification_type),
     employment_sector: safeStr(row.employment_sector),
     unique_job_role: safeStr(row.unique_job_role),
     exit_type: safeStr(row.exit_type),
     rating_25: safeStr(row.rating_25),
-    top_talent: safeStr(row.top_talent),
+    rating_24: safeStr(row.rating_24),
+    top_talent: safeStr(findCol(row, 'top_talent', 'Top Talent')),
+    succession_ready: safeStr(row.succession_ready),
     reason_for_exit: safeStr(row.reason_for_exit),
     skills_1: safeStr(row.skills_1),
     skills_2: safeStr(row.skills_2),
     skills_3: safeStr(row.skills_3),
     competency: safeStr(row.competency),
+    competency_type: safeStr(row.competency_type),
+    competency_level: safeStr(row.competency_level),
+    learning_program: safeStr(row.learning_program),
+    previous_employers: safeStr(row.previous_employers),
+    last_employer: safeStr(row.last_employer),
     employee_name: safeStr(row.employee_name) || safeStr(row.emp_name) || safeStr(row.name),
     employee_id: safeStr(row.employee_id) || safeStr(row.emp_id) || safeStr(row.id),
+    grade: safeStr(row.grade),
     company: safeStr(findCol(row, 'company', 'company_name', 'org', 'organization')),
     employment_type: safeStr(findCol(row, 'employment_type', 'emp_type', 'type_of_employment')),
     employment_status: safeStr(findCol(row, 'employment_status', 'emp_status', 'status')),
@@ -101,29 +114,31 @@ function rowToEmployee(row: Record<string, any>): Employee {
     area: safeStr(findCol(row, 'area', 'region', 'sub_zone')),
     function_name: safeStr(findCol(row, 'function', 'function_name', 'func')),
     department: safeStr(findCol(row, 'department', 'dept', 'department_name')),
-    band: safeStr(findCol(row, 'band', 'grade', 'level', 'job_band')),
+    band: safeStr(findCol(row, 'band', 'job_band')),
   };
+
+  // Capture extra fields
+  const knownKeys = new Set(Object.keys(parsed));
+  for (const [key, value] of Object.entries(row)) {
+    if (!knownKeys.has(key)) parsed[key] = value;
+  }
+
   return parsed;
 }
 
 export async function loadMasterFile(): Promise<{ employees: Employee[]; upload: UploadResult }> {
   const response = await fetch(MASTER_FILE_PATH);
-  if (!response.ok) {
-    throw new Error(`Failed to load master file: ${MASTER_FILE_NAME} (${response.status})`);
-  }
+  if (!response.ok) throw new Error(`Failed to load master file: ${MASTER_FILE_NAME} (${response.status})`);
   const arrayBuffer = await response.arrayBuffer();
   const data = new Uint8Array(arrayBuffer);
   const workbook = XLSX.read(data, { type: 'array', cellDates: true });
   const sheetNames = workbook.SheetNames;
 
   let sheetName = MASTER_FILE_PREFERRED_SHEET;
-  if (!sheetNames.includes(sheetName)) {
-    sheetName = sheetNames[0];
-  }
+  if (!sheetNames.includes(sheetName)) sheetName = sheetNames[0];
 
   const ws = workbook.Sheets[sheetName];
   const rawRows: Record<string, any>[] = XLSX.utils.sheet_to_json(ws);
-
   const normalizedRows = rawRows.map(row => {
     const newRow: Record<string, any> = {};
     for (const [key, value] of Object.entries(row)) {
@@ -137,7 +152,6 @@ export async function loadMasterFile(): Promise<{ employees: Employee[]; upload:
   const employees = normalizedRows.map(rowToEmployee);
 
   console.log(`[MasterFileLoader] Loaded ${employees.length} rows from ${sheetName} sheet`);
-  console.log(`[MasterFileLoader] Columns: ${colNames.join(', ')}`);
   if (validation.missingColumns.length > 0) {
     console.warn(`[MasterFileLoader] Missing columns: ${validation.missingColumns.join(', ')}`);
   }
@@ -145,13 +159,9 @@ export async function loadMasterFile(): Promise<{ employees: Employee[]; upload:
   return {
     employees,
     upload: {
-      fileName: MASTER_FILE_NAME,
-      sheetName,
-      rowCount: employees.length,
-      colCount: colNames.length,
-      timestamp: new Date(),
-      validation,
-      sheetNames,
+      fileName: MASTER_FILE_NAME, sheetName,
+      rowCount: employees.length, colCount: colNames.length,
+      timestamp: new Date(), validation, sheetNames,
     },
   };
 }

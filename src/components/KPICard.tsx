@@ -15,6 +15,7 @@ const sectionStyles: Record<SectionType, string> = {
   attrition: 'border-l-attrition/80',
   organization: 'border-l-primary/80',
   demographics: 'border-l-joiners/80',
+  talent: 'border-l-primary/80',
 };
 
 const iconBg: Record<SectionType, string> = {
@@ -23,6 +24,7 @@ const iconBg: Record<SectionType, string> = {
   attrition: 'bg-attrition/10 text-attrition',
   organization: 'bg-primary/10 text-primary',
   demographics: 'bg-joiners/10 text-joiners',
+  talent: 'bg-primary/10 text-primary',
 };
 
 export default function KPICard({ label, value, icon, section, delay = 0 }: KPICardProps) {
