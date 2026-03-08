@@ -72,7 +72,7 @@ echo.
 echo Starting development server on http://localhost:8080 ...
 
 :: -- Start Vite in a separate window so this script can wait for readiness --
-start "WorkplaceAI Dev Server" cmd /k "cd /d "%~dp0" && npm run dev"
+start "WorkplaceAI Dev Server" cmd /k "cd /d ""%~dp0"" && npm run dev"
 
 :: -- Wait until port 8080 is listening (max 60s) --
 set RETRY=0
