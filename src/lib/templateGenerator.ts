@@ -1,15 +1,26 @@
 import * as XLSX from 'xlsx';
 
-// Template columns with example data
+/**
+ * Complete Employee Master template columns.
+ * This list is the single source of truth and must match
+ * the column names accepted by excelParser.ts (pre-normalization).
+ * Keep display-friendly casing here; the parser normalises on import.
+ */
 const TEMPLATE_COLUMNS = [
+  // Identity
   'Employee_ID',
   'Employee_Name',
+  // Dates
   'Date_of_Joining',
   'Date_of_Exit',
   'Date_of_Birth',
+  'Last_Promotion',
+  'Last_Transfer',
+  // Demographics
   'Gender',
   'Employment_Status',
   'Employment_Type',
+  // Organisation hierarchy
   'Company',
   'Business_Unit',
   'Department',
@@ -17,117 +28,69 @@ const TEMPLATE_COLUMNS = [
   'Zone',
   'Area',
   'Location',
+  'Cluster',
+  // Job details
   'Band',
   'Grade',
   'Designation',
   'Unique_Job_Role',
+  'Employment_Sector',
+  // Experience
   'Total_Exp_Yrs',
   'Prev_Exp_in_Yrs',
+  // Compensation
   'Total_CTC_PA',
   'Fixed_CTC_PA',
   'Variable_CTC_PA',
+  // Hiring
   'Hiring_Source',
   'Manager',
+  // Engagement & satisfaction
   'Training_Hours',
   'Satisfaction_Score',
   'Engagement_Score',
+  // Performance
   'Rating_25',
   'Rating_24',
   'Top_Talent',
+  // Exit
   'Exit_Type',
   'Reason_for_Exit',
+  // Education
   'Highest_Qualification',
   'Qualification',
   'Qualification_Type',
+  // Skills & competencies
   'Skills_1',
   'Skills_2',
   'Skills_3',
   'Competency',
   'Competency_Type',
   'Competency_Level',
-  'Last_Promotion',
-  'Last_Transfer',
+  // Career history
   'Last_Employer',
   'Previous_Employers',
+  // Talent management
   'Succession_Ready',
   'Learning_Program',
-  'Cluster',
 ];
 
-const EXAMPLE_ROW: Record<string, any> = {
-  Employee_ID: 'EMP001',
-  Employee_Name: 'John Doe',
-  Date_of_Joining: '01-Apr-2020',
-  Date_of_Exit: '',
-  Date_of_Birth: '15-Jun-1985',
-  Gender: 'Male',
-  Employment_Status: 'Active',
-  Employment_Type: 'Permanent',
-  Company: 'ABC Corp',
-  Business_Unit: 'Technology',
-  Department: 'Engineering',
-  Function: 'Product',
-  Zone: 'North',
-  Area: 'Delhi NCR',
-  Location: 'New Delhi',
-  Band: 'M1',
-  Grade: 'Senior',
-  Designation: 'Senior Engineer',
-  Unique_Job_Role: 'Software Developer',
-  Total_Exp_Yrs: 8,
-  Prev_Exp_in_Yrs: 3,
-  Total_CTC_PA: 1500000,
-  Fixed_CTC_PA: 1200000,
-  Variable_CTC_PA: 300000,
-  Hiring_Source: 'LinkedIn',
-  Manager: 'Jane Smith',
-  Training_Hours: 40,
-  Satisfaction_Score: 4,
-  Engagement_Score: 85,
-  Rating_25: 'Exceeds Expectations',
-  Rating_24: 'Meets Expectations',
-  Top_Talent: 'Yes',
-  Exit_Type: '',
-  Reason_for_Exit: '',
-  Highest_Qualification: 'MBA',
-  Qualification: 'MBA - Finance',
-  Qualification_Type: 'Post Graduate',
-  Skills_1: 'JavaScript',
-  Skills_2: 'React',
-  Skills_3: 'Node.js',
-  Competency: 'Technical',
-  Competency_Type: 'Core',
-  Competency_Level: 'Expert',
-  Last_Promotion: '01-Jan-2023',
-  Last_Transfer: '',
-  Last_Employer: 'XYZ Tech',
-  Previous_Employers: 'XYZ Tech, ABC Inc',
-  Succession_Ready: 'No',
-  Learning_Program: 'Leadership Development',
-  Cluster: 'Urban',
-};
-
 export function downloadTemplate(): void {
-  // Create workbook and worksheet
   const wb = XLSX.utils.book_new();
-  
-  // Create header row and example row
-  const data = [TEMPLATE_COLUMNS, TEMPLATE_COLUMNS.map(col => EXAMPLE_ROW[col] ?? '')];
-  
-  const ws = XLSX.utils.aoa_to_sheet(data);
-  
+
+  // Header-only template (no example row)
+  const ws = XLSX.utils.aoa_to_sheet([TEMPLATE_COLUMNS]);
+
   // Set column widths
-  ws['!cols'] = TEMPLATE_COLUMNS.map(() => ({ wch: 20 }));
-  
+  ws['!cols'] = TEMPLATE_COLUMNS.map(() => ({ wch: 22 }));
+
   XLSX.utils.book_append_sheet(wb, ws, 'Master');
-  
-  // Download
   XLSX.writeFile(wb, 'Employee_Master_Template.xlsx');
 }
 
 export const REQUIRED_COLUMNS_LIST = [
   'Employee_ID',
-  'Employee_Name', 
+  'Employee_Name',
   'Date_of_Joining',
   'Gender',
   'Employment_Status',
@@ -149,7 +112,7 @@ export const RECOMMENDED_COLUMNS_LIST = [
   'Top_Talent',
   'Reason_for_Exit',
   'Skills_1',
-  'Skills_2', 
+  'Skills_2',
   'Skills_3',
   'Competency',
 ];
