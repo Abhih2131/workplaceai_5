@@ -3,6 +3,7 @@ import { Send, Mic, MicOff, Volume2, VolumeX, Bot, User, Trash2 } from 'lucide-r
 import { useData } from '@/contexts/DataContext';
 import { processQuery, ConversationContext } from '@/lib/chatEngine';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Message {
   role: 'user' | 'assistant';
