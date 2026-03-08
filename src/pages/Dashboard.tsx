@@ -13,8 +13,16 @@ import DemographicsSection from '@/components/dashboard/DemographicsSection';
 import TalentProfileSection from '@/components/dashboard/TalentProfileSection';
 
 export default function Dashboard() {
-  const { employees, filteredEmployees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError, asOfDate, fyStart, fyEnd, loadDemo } = useData();
+  const { employees, filteredEmployees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError, asOfDate, fyStart, fyEnd, loadDemo, appliedFiltersSnapshot } = useData();
   const navigate = useNavigate();
+  const { exporting, exportDashboard } = useDashboardExport();
+
+  const handleExportDashboard = () => {
+    exportDashboard(filteredEmployees, asOfDate, fyStart, fyEnd, appliedFiltersSnapshot, {
+      isDemo,
+      fileName: uploadResult?.fileName,
+    });
+  };
 
   if (isLoading) {
     return (
