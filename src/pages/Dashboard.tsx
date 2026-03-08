@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { AlertTriangle, FileSpreadsheet, Loader2, Presentation } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
+import { useDashboardExport } from '@/hooks/useDashboardExport';
 import { MASTER_FILE_NAME } from '@/lib/config';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import FilterBar from '@/components/FilterBar';
@@ -12,8 +13,16 @@ import DemographicsSection from '@/components/dashboard/DemographicsSection';
 import TalentProfileSection from '@/components/dashboard/TalentProfileSection';
 
 export default function Dashboard() {
-  const { employees, filteredEmployees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError, asOfDate, fyStart, fyEnd, loadDemo } = useData();
+  const { employees, filteredEmployees, uploadResult, isDemo, isMasterFileMode, isLoading, loadError, asOfDate, fyStart, fyEnd, loadDemo, appliedFiltersSnapshot } = useData();
   const navigate = useNavigate();
+  const { exporting, exportDashboard } = useDashboardExport();
+
+  const handleExportDashboard = () => {
+    exportDashboard(filteredEmployees, asOfDate, fyStart, fyEnd, appliedFiltersSnapshot, {
+      isDemo,
+      fileName: uploadResult?.fileName,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -79,14 +88,24 @@ export default function Dashboard() {
         )}
 
         {/* Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">HR Analytics Dashboard</h1>
-          <p className="text-muted-foreground text-sm">
-            {isDemo ? 'Demo data' : uploadResult?.fileName} · {filteredEmployees.length.toLocaleString()} employees
-            {filteredEmployees.length !== employees.length && (
-              <span className="text-muted-foreground/60 ml-1">(of {employees.length.toLocaleString()})</span>
-            )}
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-display font-bold text-foreground mb-1">HR Analytics Dashboard</h1>
+            <p className="text-muted-foreground text-sm">
+              {isDemo ? 'Demo data' : uploadResult?.fileName} · {filteredEmployees.length.toLocaleString()} employees
+              {filteredEmployees.length !== employees.length && (
+                <span className="text-muted-foreground/60 ml-1">(of {employees.length.toLocaleString()})</span>
+              )}
+            </p>
+          </div>
+          <button
+            onClick={handleExportDashboard}
+            disabled={exporting}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
+          >
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Presentation className="w-4 h-4" />}
+            {exporting ? 'Generating…' : 'Download Dashboard PPT'}
+          </button>
         </div>
 
         {/* Filters */}

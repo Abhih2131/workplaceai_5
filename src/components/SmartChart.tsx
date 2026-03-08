@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useCallback } from 'react';
 import {
   ResponsiveContainer, LineChart, BarChart, PieChart,
   Line, Bar, Pie, Cell, LabelList,
@@ -58,10 +58,34 @@ function WordCloud({ data }: { data: { name: string; value: number }[] }) {
   );
 }
 
+// Dynamic label sizing: scales font relative to container
+function useDynamicFontSize(containerRef: React.RefObject<HTMLDivElement | null>, baseFactor = 0.035, min = 8, max = 13) {
+  const [fontSize, setFontSize] = useState(11);
+
+  const updateSize = useCallback(() => {
+    if (containerRef.current) {
+      const w = containerRef.current.offsetWidth;
+      setFontSize(Math.max(min, Math.min(max, Math.round(w * baseFactor))));
+    }
+  }, [containerRef, baseFactor, min, max]);
+
+  // Run once on mount via useMemo trick
+  useMemo(() => {
+    if (typeof window !== 'undefined') {
+      const ro = new ResizeObserver(() => updateSize());
+      setTimeout(() => {
+        if (containerRef.current) ro.observe(containerRef.current);
+      }, 50);
+      return () => ro.disconnect();
+    }
+  }, [containerRef, updateSize]);
+
+  return fontSize;
+}
+
 const renderPieLabel = ({ name, percent, cx, x }: any) => {
   const pct = (percent * 100).toFixed(0);
   const displayName = truncateLabel(name, 12);
-  const anchor = x > cx ? 'start' : 'end';
   return `${displayName} ${pct}%`;
 };
 
@@ -69,13 +93,19 @@ export default function SmartChart({ spec }: { spec: ChartSpec }) {
   const { type, data, yLabel } = spec;
   const chartRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
+  const dynamicFontSize = useDynamicFontSize(chartRef);
+
+  // Compute scaled sizes
+  const labelFontSize = Math.max(8, dynamicFontSize - 1);
+  const axisFontSize = Math.max(8, dynamicFontSize - 1);
+  const dataLabelFontSize = Math.max(7, dynamicFontSize - 2);
 
   const handleExport = async (format: 'excel' | 'pdf' | 'ppt') => {
     setExporting(true);
     try {
       if (format === 'excel') await exportToExcel(spec.title, data);
       else if (format === 'pdf') await exportToPDF(spec.title, data, chartRef.current);
-      else await exportToPPT(spec.title, data, chartRef.current);
+      else await exportToPPT(spec.title, data, chartRef.current, spec);
     } catch (e) { console.error('Export failed:', e); }
     setExporting(false);
   };
@@ -93,12 +123,12 @@ export default function SmartChart({ spec }: { spec: ChartSpec }) {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={data} margin={{ top: 20, right: 20, bottom: 5, left: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 90%)" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft', style: { fontSize: 11 } } : undefined} />
+              <XAxis dataKey="name" tick={{ fontSize: axisFontSize }} />
+              <YAxis tick={{ fontSize: axisFontSize }} label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft', style: { fontSize: axisFontSize } } : undefined} />
               <Tooltip content={<CustomTooltip />} />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: labelFontSize }} />
               <Line type="monotone" dataKey="value" stroke={COLORS[0]} strokeWidth={3} dot={{ r: 5, fill: COLORS[0] }} name={yLabel || 'Value'}>
-                <LabelList dataKey="value" position="top" fontSize={10} fill="hsl(220, 25%, 30%)" formatter={(v: number) => v.toLocaleString()} />
+                <LabelList dataKey="value" position="top" fontSize={dataLabelFontSize} fill="hsl(220, 25%, 30%)" formatter={(v: number) => v.toLocaleString()} />
               </Line>
             </LineChart>
           </ResponsiveContainer>
@@ -111,17 +141,17 @@ export default function SmartChart({ spec }: { spec: ChartSpec }) {
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 90%)" />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 10 }}
+                tick={{ fontSize: Math.max(8, axisFontSize - 1) }}
                 angle={needsRotation ? -35 : 0}
                 textAnchor={needsRotation ? 'end' : 'middle'}
                 height={needsRotation ? 70 : 40}
                 tickFormatter={(v) => truncateLabel(v, 16)}
               />
-              <YAxis tick={{ fontSize: 11 }} label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft', style: { fontSize: 11 } } : undefined} />
+              <YAxis tick={{ fontSize: axisFontSize }} label={yLabel ? { value: yLabel, angle: -90, position: 'insideLeft', style: { fontSize: axisFontSize } } : undefined} />
               <Tooltip content={<CustomTooltip />} />
-              <Legend />
+              <Legend wrapperStyle={{ fontSize: labelFontSize }} />
               <Bar dataKey="value" radius={[4, 4, 0, 0]} name={yLabel || 'Count'}>
-                <LabelList dataKey="value" position="top" fontSize={10} fill="hsl(220, 25%, 30%)" formatter={(v: number) => v.toLocaleString()} />
+                <LabelList dataKey="value" position="top" fontSize={dataLabelFontSize} fill="hsl(220, 25%, 30%)" formatter={(v: number) => v.toLocaleString()} />
                 {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Bar>
             </BarChart>
@@ -136,11 +166,12 @@ export default function SmartChart({ spec }: { spec: ChartSpec }) {
                 data={data} cx="50%" cy="50%" innerRadius={55} outerRadius={95}
                 dataKey="value" paddingAngle={2}
                 label={renderPieLabel} labelLine
+                fontSize={labelFontSize}
               >
                 {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
-              <Legend formatter={(value) => truncateLabel(value, 18)} />
+              <Legend formatter={(value) => truncateLabel(value, 18)} wrapperStyle={{ fontSize: labelFontSize }} />
             </PieChart>
           </ResponsiveContainer>
         );
@@ -152,11 +183,12 @@ export default function SmartChart({ spec }: { spec: ChartSpec }) {
               <Pie
                 data={data} cx="50%" cy="50%" outerRadius={95}
                 dataKey="value" label={renderPieLabel} labelLine
+                fontSize={labelFontSize}
               >
                 {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
-              <Legend formatter={(value) => truncateLabel(value, 18)} />
+              <Legend formatter={(value) => truncateLabel(value, 18)} wrapperStyle={{ fontSize: labelFontSize }} />
             </PieChart>
           </ResponsiveContainer>
         );
@@ -167,7 +199,7 @@ export default function SmartChart({ spec }: { spec: ChartSpec }) {
       default:
         return null;
     }
-  }, [type, data, yLabel]);
+  }, [type, data, yLabel, axisFontSize, labelFontSize, dataLabelFontSize]);
 
   return (
     <div className="rounded-xl bg-card border border-border shadow-sm overflow-hidden">
