@@ -93,7 +93,7 @@ function matchesAny(q: string, keywords: string[]): boolean {
 
 function extractGender(q: string): string | undefined {
   for (const [kw, val] of Object.entries(GENDER_MAP)) {
-    if (q.includes(kw)) return val;
+    if (new RegExp(`\\b${kw}\\b`).test(q)) return val;
   }
   return undefined;
 }
@@ -106,8 +106,16 @@ function extractZone(q: string): string | undefined {
 }
 
 function extractRating(q: string): string | undefined {
+  // Only match rating keywords when "rating" or "rated" or "performance" is present, 
+  // OR the keyword is unambiguous (excellent, poor, outstanding)
+  const hasRatingContext = /\b(rating|rated|performance)\b/.test(q);
+  const unambiguous = ['excellent', 'outstanding', 'exceptional', 'poor', 'below average'];
   for (const [kw, val] of Object.entries(RATING_MAP)) {
-    if (q.includes(kw)) return val;
+    if (unambiguous.includes(kw)) {
+      if (new RegExp(`\\b${kw}\\b`).test(q)) return val;
+    } else if (hasRatingContext && new RegExp(`\\b${kw}\\b`).test(q)) {
+      return val;
+    }
   }
   return undefined;
 }
