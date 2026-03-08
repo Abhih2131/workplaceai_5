@@ -1,3 +1,5 @@
+import { deploymentConfig } from './deploymentConfig';
+
 /**
  * Master File Test Mode Configuration
  * 
@@ -7,5 +9,8 @@
  */
 export const MASTER_FILE_TEST_MODE = false;
 export const MASTER_FILE_NAME = 'employee_master.xlsx';
-export const MASTER_FILE_PATH = `/data/${MASTER_FILE_NAME}`;
+export const MASTER_FILE_PATH = `${deploymentConfig.dataBasePath}/${MASTER_FILE_NAME}`;
 export const MASTER_FILE_PREFERRED_SHEET = 'Master';
+
+/** Re-export deployment config for convenience */
+export { deploymentConfig } from './deploymentConfig';
