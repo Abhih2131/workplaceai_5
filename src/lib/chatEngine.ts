@@ -93,7 +93,7 @@ function matchesAny(q: string, keywords: string[]): boolean {
 
 function extractGender(q: string): string | undefined {
   for (const [kw, val] of Object.entries(GENDER_MAP)) {
-    if (q.includes(kw)) return val;
+    if (new RegExp(`\\b${kw}\\b`).test(q)) return val;
   }
   return undefined;
 }
