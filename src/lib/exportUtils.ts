@@ -324,7 +324,7 @@ export async function exportDashboardToPPT(
 
   // ── Slide 1: Title + Filters ──
   const titleSlide = pptx.addSlide();
-  titleSlide.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 2.5, fill: { color: BRAND_COLOR } });
+  titleSlide.addShape('rect' as any, { x: 0, y: 0, w: 13.33, h: 2.5, fill: { color: BRAND_COLOR } });
   titleSlide.addText('HR Analytics Dashboard', { x: 0.8, y: 0.5, w: 11, fontSize: 36, bold: true, color: 'FFFFFF', fontFace: 'Arial' });
   titleSlide.addText(
     `${meta.isDemo ? 'Demo Data' : meta.fileName || 'Master File'} · ${meta.employeeCount.toLocaleString()} employees`,
