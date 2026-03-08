@@ -3,9 +3,9 @@ title WorkplaceAI - Stop Services
 color 0F
 
 echo.
-echo  ╔══════════════════════════════════════════════════╗
-echo  ║         WorkplaceAI – Stop Services              ║
-echo  ╚══════════════════════════════════════════════════╝
+echo  ==================================================
+echo           WorkplaceAI - Stop Services
+echo  ==================================================
 echo.
 
 :: Stop Node.js processes on port 8080
@@ -22,6 +22,6 @@ if %ERRORLEVEL% EQU 0 (
 )
 
 echo.
-echo   All services stopped ✓
+echo   All services stopped OK
 echo.
 pause
