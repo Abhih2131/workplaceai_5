@@ -219,7 +219,7 @@ export default function Chatbot() {
               }`}>
                 {msg.role === 'assistant' ? (
                   <div className="prose prose-sm max-w-none text-card-foreground [&_table]:w-full [&_table]:text-xs [&_th]:p-1.5 [&_td]:p-1.5 [&_th]:text-left [&_th]:border-b [&_th]:border-border [&_td]:border-b [&_td]:border-border/50 [&_h3]:text-base [&_h3]:mt-0 [&_h3]:mb-2 [&_p]:my-1">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-sm">{msg.content}</p>
