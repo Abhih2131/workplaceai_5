@@ -57,10 +57,9 @@ describe('formatters', () => {
     });
 
     it('parses Excel serial numbers', () => {
-      // 45292 = 2023-12-31 in Excel serial
       const d = parseDate(45292);
       expect(d).not.toBeNull();
-      expect(d!.getFullYear()).toBe(2023);
+      expect(d!.getFullYear()).toBe(2024);
     });
 
     it('parses ISO date strings', () => {
