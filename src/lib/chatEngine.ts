@@ -322,7 +322,12 @@ export function processQuery(
   const now = new Date();
 
   // Detect follow-up: if short query references previous context
-  const isFollowUp = context && context.lastResultSet.length > 0 && (
+  // But NOT if the query has a clear standalone intent (top/bottom, attrition, group, breakdown)
+  const hasStandaloneIntent = matchesAny(q, TOP_KEYWORDS) || matchesAny(q, BOTTOM_KEYWORDS) ||
+    q.includes('attrition') || matchesAny(q, GROUP_KEYWORDS) ||
+    q.includes('breakdown') || q.includes('break down');
+
+  const isFollowUp = context && context.lastResultSet.length > 0 && !hasStandaloneIntent && (
     q.startsWith('how many') ||
     q.startsWith('and ') ||
     q.startsWith('what about') ||
@@ -331,7 +336,7 @@ export function processQuery(
     q.startsWith('from those') ||
     q.startsWith('out of them') ||
     q.startsWith('filter') ||
-    (q.split(' ').length <= 6 && !matchesAny(q, ['all employees', 'total employees', 'everyone']))
+    (q.split(' ').length <= 4 && !matchesAny(q, ['all employees', 'total employees', 'everyone']))
   );
 
   // If follow-up, inherit previous filters
