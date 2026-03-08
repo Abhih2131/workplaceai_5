@@ -363,6 +363,7 @@ export function processQuery(
   // "hired from LinkedIn" = hiring source, NOT joiner filter
   const isSourceContext = /\b(hired|recruited|sourced)\s+(from|via|through)\b/.test(q);
   if (matchesAny(q, JOINER_KEYWORDS) && !isSourceContext) filters.isJoiner = true;
+  if (matchesAny(q, EXIT_KEYWORDS)) filters.isExit = true;
 
   if (q.includes('top talent')) filters.topTalent = 'yes';
 
