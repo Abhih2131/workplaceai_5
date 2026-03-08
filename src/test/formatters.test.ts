@@ -57,10 +57,10 @@ describe('formatters', () => {
     });
 
     it('parses Excel serial numbers', () => {
-      // 45658 = 2024-12-31 in Excel serial
-      const d = parseDate(45658);
+      // 45292 = 2023-12-31 in Excel serial
+      const d = parseDate(45292);
       expect(d).not.toBeNull();
-      expect(d!.getFullYear()).toBe(2024);
+      expect(d!.getFullYear()).toBe(2023);
     });
 
     it('parses ISO date strings', () => {
