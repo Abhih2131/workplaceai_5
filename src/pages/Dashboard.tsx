@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { AlertTriangle, FileSpreadsheet, Loader2, Presentation } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
+import { useDashboardExport } from '@/hooks/useDashboardExport';
 import { MASTER_FILE_NAME } from '@/lib/config';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import FilterBar from '@/components/FilterBar';
