@@ -384,7 +384,7 @@ export async function exportDashboardToPPT(
     const charts = section.charts.filter(c => c.data && c.data.length > 0);
     for (let i = 0; i < charts.length; i += 2) {
       const chartSlide = pptx.addSlide();
-      chartSlide.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 0.6, fill: { color: ACCENT_COLOR } });
+      chartSlide.addShape('rect' as any, { x: 0, y: 0, w: 13.33, h: 0.6, fill: { color: ACCENT_COLOR } });
       chartSlide.addText(section.sectionTitle, { x: 0.5, y: 0.1, w: 12, fontSize: 16, bold: true, color: 'FFFFFF' });
 
       const chartsOnSlide = charts.slice(i, i + 2);
