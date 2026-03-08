@@ -1,8 +1,43 @@
+/**
+ * KPI Calculation Engine
+ *
+ * Pure functions that compute Key Performance Indicators from an employee
+ * dataset, an as-of date, and fiscal-year boundaries.
+ *
+ * **Business rules** (FY month, rounding, attrition-rate base) are read
+ * from `businessConfig.ts` so they can be changed in one place.
+ */
+
 import { Employee, PeopleKPIs, JoinersKPIs, AttritionKPIs } from './types';
 import { diffDays, mean, mode, round1, safeLower, titleCase } from './formatters';
+import {
+  ATTRITION_PCT_BASE,
+  TRAINING_HOURS_MODE,
+  CTC_TO_LAKHS,
+  PCT_DECIMALS,
+} from './businessConfig';
 
+/** Round to the configured percentage decimal places. */
+function roundPct(n: number): number {
+  const f = Math.pow(10, PCT_DECIMALS);
+  return Math.round(n * f) / f;
+}
+
+// ─── People Snapshot KPIs ─────────────────────────────────────────
+
+/**
+ * Computes the 8 KPIs displayed on the People Snapshot tab.
+ *
+ * Active employees: `date_of_exit` is null OR after `asOfDate`.
+ * New hires / exits are counted within the `[fyStart, fyEnd]` range.
+ *
+ * @param employees  Full (filtered) employee array.
+ * @param asOfDate   The reference "today" date for headcount & age/tenure.
+ * @param fyStart    Start of the selected fiscal year (inclusive).
+ * @param fyEnd      End of the selected fiscal year (inclusive).
+ * @returns {@link PeopleKPIs}
+ */
 export function computePeopleKPIs(employees: Employee[], asOfDate: Date, fyStart: Date, fyEnd: Date): PeopleKPIs {
-  // df_active: date_of_exit is null OR date_of_exit > as_of_date
   const dfActive = employees.filter(e =>
     !e.date_of_exit || e.date_of_exit > asOfDate
   );
@@ -23,7 +58,11 @@ export function computePeopleKPIs(employees: Employee[], asOfDate: Date, fyStart
     .filter(e => e.date_of_joining)
     .map(e => diffDays(asOfDate, e.date_of_joining!) / 365.25);
 
-  const trainingHours = dfActive.reduce((s, e) => s + (e.training_hours ?? 0), 0);
+  const trainingHoursRaw = dfActive.reduce((s, e) => s + (e.training_hours ?? 0), 0);
+  const trainingHours = TRAINING_HOURS_MODE === 'average' && dfActive.length > 0
+    ? round1(trainingHoursRaw / dfActive.length)
+    : Math.floor(trainingHoursRaw);
+
   const satisfactionScores = dfActive.map(e => e.satisfaction_score ?? 0);
 
   return {
@@ -33,11 +72,24 @@ export function computePeopleKPIs(employees: Employee[], asOfDate: Date, fyStart
     avgAge: ages.length ? Math.floor(mean(ages)) : 0,
     avgTenure: tenures.length ? round1(mean(tenures)) : 0,
     avgExperience: round1(mean(dfActive.map(e => e.total_exp_yrs ?? 0))),
-    trainingHours: Math.floor(trainingHours),
+    trainingHours,
     avgSatisfaction: round1(mean(satisfactionScores)),
   };
 }
 
+// ─── Joiners Snapshot KPIs ────────────────────────────────────────
+
+/**
+ * Computes the 8 KPIs displayed on the Hiring / Joiners tab.
+ *
+ * Joiners: employees whose `date_of_joining` falls in `[fyStart, fyEnd]`.
+ *
+ * @param employees  Full (filtered) employee array.
+ * @param asOfDate   Reference date (used for age calculation of joiners).
+ * @param fyStart    FY start (inclusive).
+ * @param fyEnd      FY end (inclusive).
+ * @returns {@link JoinersKPIs}
+ */
 export function computeJoinersKPIs(employees: Employee[], asOfDate: Date, fyStart: Date, fyEnd: Date): JoinersKPIs {
   const dfJoiners = employees.filter(e =>
     e.date_of_joining && e.date_of_joining >= fyStart && e.date_of_joining <= fyEnd
@@ -61,7 +113,6 @@ export function computeJoinersKPIs(employees: Employee[], asOfDate: Date, fyStar
     ? (dfJoiners.filter(e => (e.total_exp_yrs ?? 0) < 1).length / total) * 100
     : 0;
 
-  // Male to Female Ratio
   const males = dfJoiners.filter(e => safeLower(e.gender) === 'male').length;
   const females = dfJoiners.filter(e => safeLower(e.gender) === 'female').length;
   const mfRatio = females === 0
@@ -75,14 +126,32 @@ export function computeJoinersKPIs(employees: Employee[], asOfDate: Date, fyStar
     totalNewJoiners: total,
     avgAge: ages.length ? round1(mean(ages)) : 0,
     avgExperience: experiences.length ? round1(mean(experiences)) : 0,
-    avgCTC: ctcs.length ? round1(mean(ctcs) / 1e5) : 0,
-    pctFreshers: round1(freshers),
+    avgCTC: ctcs.length ? round1(mean(ctcs) / CTC_TO_LAKHS) : 0,
+    pctFreshers: roundPct(freshers),
     maleToFemaleRatio: mfRatio,
     topHiringSource: mode(sources),
     topHiringZone: mode(zones),
   };
 }
 
+// ─── Attrition Snapshot KPIs ──────────────────────────────────────
+
+/**
+ * Computes the 8 KPIs displayed on the Attrition tab.
+ *
+ * Attrition rate = exits / average headcount × 100 (when {@link ATTRITION_PCT_BASE} = 'headcount').
+ * Sub-type percentages use the same denominator for consistency.
+ *
+ * Average headcount = (opening HC + closing HC) / 2
+ *   - Opening HC: active on `fyStart`
+ *   - Closing HC: active on `fyEnd`
+ *
+ * @param employees  Full (filtered) employee array.
+ * @param _asOfDate  Currently unused; reserved for future use.
+ * @param fyStart    FY start (inclusive).
+ * @param fyEnd      FY end (inclusive).
+ * @returns {@link AttritionKPIs}
+ */
 export function computeAttritionKPIs(employees: Employee[], _asOfDate: Date, fyStart: Date, fyEnd: Date): AttritionKPIs {
   const dfExits = employees.filter(e =>
     e.date_of_exit && e.date_of_exit >= fyStart && e.date_of_exit <= fyEnd
@@ -113,14 +182,17 @@ export function computeAttritionKPIs(employees: Employee[], _asOfDate: Date, fyS
   const highPerf = dfExits.filter(e => safeLower(e.rating_25) === 'excellent').length;
   const topTalent = dfExits.filter(e => safeLower(e.top_talent) === 'yes').length;
 
+  // Denominator for sub-type percentages
+  const denom = ATTRITION_PCT_BASE === 'exits' ? (totalExits || 1) : avgHC;
+
   return {
-    totalAttritionPct: round1((totalExits / avgHC) * 100),
-    regrettableAttritionPct: round1((regrettable / avgHC) * 100),
-    nonRegretAttritionPct: round1((nonRegret / avgHC) * 100),
-    retirementAttritionPct: round1((retirement / avgHC) * 100),
+    totalAttritionPct: roundPct((totalExits / avgHC) * 100),
+    regrettableAttritionPct: roundPct((regrettable / denom) * 100),
+    nonRegretAttritionPct: roundPct((nonRegret / denom) * 100),
+    retirementAttritionPct: roundPct((retirement / denom) * 100),
     avgTenureExited: exitTenures.length ? round1(mean(exitTenures)) : 0,
     topExitRegion: mode(zones),
-    highPerfAttritionPct: round1((highPerf / avgHC) * 100),
-    topTalentAttritionPct: round1((topTalent / avgHC) * 100),
+    highPerfAttritionPct: roundPct((highPerf / denom) * 100),
+    topTalentAttritionPct: roundPct((topTalent / denom) * 100),
   };
 }
