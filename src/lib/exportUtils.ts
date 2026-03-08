@@ -354,7 +354,7 @@ export async function exportDashboardToPPT(
     // KPIs slide
     if (section.kpis && section.kpis.length > 0) {
       const kpiSlide = pptx.addSlide();
-      kpiSlide.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: 13.33, h: 0.8, fill: { color: ACCENT_COLOR } });
+      kpiSlide.addShape('rect' as any, { x: 0, y: 0, w: 13.33, h: 0.8, fill: { color: ACCENT_COLOR } });
       kpiSlide.addText(section.sectionTitle + ' — Key Metrics', { x: 0.5, y: 0.15, w: 12, fontSize: 20, bold: true, color: 'FFFFFF' });
 
       const cols = Math.min(section.kpis.length, 4);
