@@ -1,0 +1,22 @@
+# ============================================
+# HR Analytics Dashboard – Local Docker Setup
+# ============================================
+# Usage: docker-compose up --build
+# Then open http://localhost:8080
+
+version: "3.8"
+
+services:
+  hr-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount local data folder so users can drop Excel files
+      - ./public/data:/usr/share/nginx/html/data
+    restart: unless-stopped
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=8080
