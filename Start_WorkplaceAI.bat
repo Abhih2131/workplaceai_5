@@ -25,13 +25,7 @@ if %ERRORLEVEL% NEQ 0 (
     echo   [✗] Node.js          — Not Installed
     set MISSING=1
 ) else (
-    for /f "tokens=1 delims=v" %%a in ('node -v 2^>nul') do set NODE_RAW=%%a
-    for /f "tokens=1 delims=." %%b in ('node -v 2^>nul') do set NODE_MAJOR=%%b
-    set NODE_MAJOR=%NODE_MAJOR:v=%
-    call set NODE_MAJOR=%%NODE_MAJOR:v=%%
-    for /f "delims=v. tokens=1" %%m in ('node -v') do set NODE_MAJOR=%%m
-    :: Re-check with a simpler method
-    for /f "tokens=*" %%v in ('node -e "process.stdout.write(String(process.versions.node.split(\".\")[0]))"') do set NODE_MAJOR=%%v
+    for /f "tokens=*" %%v in ('node -e "process.stdout.write(String(process.versions.node.split('.')[0]))"') do set NODE_MAJOR=%%v
     if !NODE_MAJOR! LSS 20 (
         echo   [!] Node.js          — Version !NODE_MAJOR! found ^(v20+ required^)
         set MISSING=1
