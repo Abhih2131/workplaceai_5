@@ -4,14 +4,7 @@ import { generateDemoData } from '@/lib/demoData';
 import { MASTER_FILE_TEST_MODE } from '@/lib/config';
 import { loadMasterFile } from '@/lib/masterFileLoader';
 import { titleCase } from '@/lib/formatters';
-
-function getFY(date: Date) {
-  const m = date.getMonth();
-  const y = date.getFullYear();
-  return m >= 3
-    ? { fyStart: new Date(y, 3, 1), fyEnd: new Date(y + 1, 2, 31) }
-    : { fyStart: new Date(y - 1, 3, 1), fyEnd: new Date(y, 2, 31) };
-}
+import { getFiscalYear } from '@/lib/businessConfig';
 
 interface DataContextType {
   employees: Employee[];
@@ -53,7 +46,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d;
   });
 
-  const { fyStart, fyEnd } = useMemo(() => getFY(asOfDate), [asOfDate]);
+  // Use centralised FY logic from businessConfig
+  const { fyStart, fyEnd } = useMemo(() => getFiscalYear(asOfDate), [asOfDate]);
 
   const setUseToday = useCallback((val: boolean) => {
     setUseTodayState(val);
