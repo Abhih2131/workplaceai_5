@@ -1,15 +1,13 @@
 @echo off
-setlocal EnableDelayedExpansion
+setlocal EnableExtensions EnableDelayedExpansion
+cd /d "%~dp0"
 title WorkplaceAI - Local Startup
 color 0F
 
 echo.
-echo  ==================================================
+echo ==================================================
 echo           WorkplaceAI - Local Startup
-echo           HR Analytics Dashboard
-echo  ==================================================
-echo.
-echo  Checking system requirements...
+echo ==================================================
 echo.
 
 set MISSING=0
@@ -19,123 +17,82 @@ set NPM_OK=0
 :: -- Check Node.js --
 where node >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
-    echo   [X] Node.js          - Not Installed
+    echo [X] Node.js not found
     set MISSING=1
 ) else (
     for /f "tokens=*" %%v in ('node -e "process.stdout.write(String(process.versions.node.split('.')[0]))"') do set NODE_MAJOR=%%v
     if !NODE_MAJOR! LSS 20 (
-        echo   [!] Node.js          - Version !NODE_MAJOR! found (v20+ required)
+        echo [!] Node.js v!NODE_MAJOR! found. v20+ required.
         set MISSING=1
     ) else (
-        echo   [OK] Node.js         - v!NODE_MAJOR! detected
+        echo [OK] Node.js v!NODE_MAJOR! detected
         set NODE_OK=1
     )
 )
 
-:: -- Check NPM --
+:: -- Check npm --
 where npm >nul 2>nul
 if %ERRORLEVEL% NEQ 0 (
-    echo   [X] npm              - Not Installed
+    echo [X] npm not found
     set MISSING=1
 ) else (
     for /f "tokens=*" %%v in ('npm -v 2^>nul') do set NPM_VER=%%v
-    echo   [OK] npm             - v%NPM_VER% detected
+    echo [OK] npm v%NPM_VER% detected
     set NPM_OK=1
 )
 
-:: -- Check Git (optional) --
-where git >nul 2>nul
-if %ERRORLEVEL% NEQ 0 (
-    echo   [~] Git              - Not Installed (optional)
-) else (
-    for /f "tokens=3" %%v in ('git --version 2^>nul') do set GIT_VER=%%v
-    echo   [OK] Git             - v%GIT_VER% detected
-)
-
-:: -- Check Docker (optional) --
-where docker >nul 2>nul
-if %ERRORLEVEL% NEQ 0 (
-    echo   [~] Docker           - Not Installed (optional)
-) else (
-    echo   [OK] Docker          - Detected
-)
-
-echo.
-
-:: -- If missing required components, show help --
 if %MISSING% EQU 1 (
-    echo  ==================================================
-    echo         Missing Required Software
-    echo  ==================================================
     echo.
-    echo   Please install the following before continuing:
-    echo.
-    if %NODE_OK% EQU 0 (
-        echo     Node.js (v20 or higher)
-        echo     Download: https://nodejs.org
-        echo.
-    )
-    if %NPM_OK% EQU 0 (
-        echo     npm (comes with Node.js)
-        echo     Download: https://nodejs.org
-        echo.
-    )
-    echo   After installing:
-    echo     1. Restart your computer
-    echo     2. Double-click Start_WorkplaceAI.bat again
-    echo.
+    echo Missing required software. Please install Node.js v20+ from https://nodejs.org
     pause
     exit /b 1
 )
 
-:: -- All checks passed --
-echo   All requirements verified OK
-echo.
-
 :: -- Install dependencies if needed --
 if not exist node_modules (
-    echo  Installing dependencies... (this may take a few minutes)
     echo.
+    echo Installing dependencies...
     call npm install
     if %ERRORLEVEL% NEQ 0 (
         echo.
-        echo  [ERROR] Dependency installation failed.
-        echo  Please check your internet connection and try again.
+        echo [ERROR] npm install failed.
         pause
         exit /b 1
     )
-    echo.
-    echo   Dependencies installed OK
-) else (
-    echo   Dependencies already installed OK
 )
 
 :: -- Copy local env if needed --
 if exist .env.local (
     if not exist .env (
         copy .env.local .env >nul
-        echo   Local configuration applied OK
     )
 )
 
 echo.
-echo  ==================================================
-echo           Starting WorkplaceAI...
-echo  ==================================================
-echo.
-echo   Application server starting...
-echo.
-echo   Opening browser in 5 seconds...
-echo.
-echo   Application will be available at:
-echo.
-echo     http://localhost:8080
-echo.
-echo   To stop: Close this window or press Ctrl+C
-echo.
+echo Starting development server on http://localhost:8080 ...
 
-:: -- Open browser after a short delay --
-start "" cmd /c "timeout /t 5 /nobreak >nul && start http://localhost:8080"
+:: -- Start Vite in a separate window so this script can wait for readiness --
+start "WorkplaceAI Dev Server" cmd /k "cd /d ""%~dp0"" && npm run dev"
 
-:: -- Start the dev server --
-call npm run dev
+:: -- Wait until port 8080 is listening (max 60s) --
+set RETRY=0
+:WAIT_FOR_SERVER
+set PORT_OPEN=
+for /f "tokens=5" %%p in ('netstat -aon ^| findstr ":8080" ^| findstr "LISTENING"') do set PORT_OPEN=1
+if defined PORT_OPEN goto OPEN_BROWSER
+set /a RETRY+=1
+if %RETRY% GEQ 60 goto TIMEOUT
+timeout /t 1 /nobreak >nul
+goto WAIT_FOR_SERVER
+
+:OPEN_BROWSER
+echo Server is ready. Opening browser...
+start "" "http://localhost:8080"
+exit /b 0
+
+:TIMEOUT
+echo.
+echo [WARN] Server did not start within 60 seconds.
+echo Open this manually once the server is ready: http://localhost:8080
+pause
+exit /b 1
