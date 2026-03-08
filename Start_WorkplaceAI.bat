@@ -1,4 +1,5 @@
 @echo off
+setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>nul
 title WorkplaceAI - Local Startup
 color 0F
