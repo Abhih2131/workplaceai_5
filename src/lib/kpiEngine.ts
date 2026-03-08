@@ -43,26 +43,30 @@ export function computePeopleKPIs(employees: Employee[], asOfDate: Date, fyStart
   );
 
   // Debug: log FY boundaries and new hire detection
-  console.log('[KPI DEBUG] asOfDate:', asOfDate.toISOString());
-  console.log('[KPI DEBUG] FY range:', fyStart.toISOString(), 'to', fyEnd.toISOString());
-  console.log('[KPI DEBUG] Total employees passed:', employees.length);
-  console.log('[KPI DEBUG] Active employees:', dfActive.length);
+  console.log('[KPI DEBUG] asOfDate:', asOfDate.toISOString(), '| local:', asOfDate.toString());
+  console.log('[KPI DEBUG] fyStart:', fyStart.toISOString(), '| local:', fyStart.toString());
+  console.log('[KPI DEBUG] fyEnd:', fyEnd.toISOString(), '| local:', fyEnd.toString());
+  console.log('[KPI DEBUG] Total employees passed:', employees.length, '| Active:', dfActive.length);
+
+  // Log all employees with DOJ in 2025 or 2026 to see which are included/excluded
+  const dojIn2025_2026 = employees
+    .filter(e => e.date_of_joining && (e.date_of_joining.getFullYear() === 2025 || e.date_of_joining.getFullYear() === 2026))
+    .map(e => ({
+      id: e.employee_id,
+      doj: e.date_of_joining!.toISOString(),
+      dojLocal: e.date_of_joining!.toString(),
+      inFY: e.date_of_joining! >= fyStart && e.date_of_joining! <= fyEnd,
+    }));
+  console.log('[KPI DEBUG] Employees with DOJ in 2025/2026:', JSON.stringify(dojIn2025_2026, null, 2));
 
   const newHiresList = employees.filter(e =>
     e.date_of_joining && e.date_of_joining >= fyStart && e.date_of_joining <= fyEnd
   );
-
-  // Log sample joining dates for debugging
-  const sampleDOJs = employees
-    .filter(e => e.date_of_joining)
-    .slice(0, 5)
-    .map(e => ({ id: e.employee_id, doj: e.date_of_joining?.toISOString() }));
-  console.log('[KPI DEBUG] Sample DOJs:', JSON.stringify(sampleDOJs));
   console.log('[KPI DEBUG] New Hires count:', newHiresList.length);
 
-  // Also count how many have null date_of_joining
+  // Check for null DOJ
   const nullDOJ = employees.filter(e => !e.date_of_joining).length;
-  console.log('[KPI DEBUG] Employees with NULL date_of_joining:', nullDOJ);
+  if (nullDOJ > 0) console.warn('[KPI DEBUG] Employees with NULL date_of_joining:', nullDOJ);
 
   const newHires = newHiresList.length;
 
