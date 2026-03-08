@@ -369,7 +369,7 @@ export async function exportDashboardToPPT(
         const x = startX + col * (cardW + gap);
         const y = 1.3 + row * 1.8;
 
-        kpiSlide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {
+        kpiSlide.addShape('roundRect' as any, {
           x, y, w: cardW, h: 1.4,
           fill: { color: 'F8FAFC' },
           line: { color: 'E2E8F0', width: 1 },
